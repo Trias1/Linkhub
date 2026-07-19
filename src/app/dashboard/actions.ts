@@ -131,7 +131,7 @@ export async function addPresetLink(formData: FormData) {
     instagram: { title: "Instagram", url: "https://instagram.com/" },
     tiktok: { title: "TikTok", url: "https://tiktok.com/" },
     youtube: { title: "YouTube", url: "https://youtube.com/" },
-    whatsapp: { title: "WhatsApp", url: "https://wa.me/" },
+    whatsapp: { title: "WhatsApp", url: "https://wa.me/628123456789" },
     email: { title: "Email", url: "mailto:username@gmail.com" },
     website: { title: "Website", url: "https://example.com/" },
     ...Object.fromEntries(Object.entries(commercePlatforms).map(([key, item]) => [key, { title: item.label, url: item.url }])),
