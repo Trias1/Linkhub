@@ -22,16 +22,6 @@ function validUrl(value: FormDataEntryValue | null) {
 
 
 
-async function uploadProfileImage(supabase: Awaited<ReturnType<typeof createClient>>, userId: string, value: FormDataEntryValue | null) {
-  if (!(value instanceof File) || value.size === 0) return null;
-  const extensions: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
-  const extension = extensions[value.type];
-  if (!extension || value.size > 5 * 1024 * 1024) redirect("/dashboard/design/customize?error=Foto harus JPG, PNG, atau WebP maksimal 5MB");
-  const path = `${userId}/${crypto.randomUUID()}.${extension}`;
-  const { error } = await supabase.storage.from("profile-images").upload(path, value, { contentType: value.type, upsert: false });
-  if (error) redirect(`/dashboard/design/customize?error=${encodeURIComponent(error.message)}`);
-  return { path, url: supabase.storage.from("profile-images").getPublicUrl(path).data.publicUrl };
-}
 async function uploadProductImage(supabase: Awaited<ReturnType<typeof createClient>>, userId: string, value: FormDataEntryValue | null) {
   if (!(value instanceof File) || value.size === 0) return null;
   const extensions: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
@@ -52,7 +42,12 @@ export async function saveAccount(formData: FormData) {
   const { supabase, user, linktree } = await authenticatedClient();
   const slug = String(formData.get("slug") ?? "").trim().toLowerCase();
   if (!/^[a-z0-9-]{3,40}$/.test(slug)) redirect("/dashboard/account?error=Slug harus 3-40 karakter");
-  const { error } = await supabase.from("linktrees").update({ name: String(formData.get("name") ?? "").trim().slice(0, 60), bio: String(formData.get("bio") ?? "").trim().slice(0, 160), slug }).eq("id", linktree.id).eq("owner_id", user.id);
+  const photo = String(formData.get("avatar_url") ?? "").trim();
+  if (photo) {
+    try { if (!["http:", "https:"].includes(new URL(photo).protocol)) throw new Error(); }
+    catch { redirect("/dashboard/account?error=URL foto harus memakai http atau https"); }
+  }
+  const { error } = await supabase.from("linktrees").update({ name: String(formData.get("name") ?? "").trim().slice(0, 60), slug, avatar_url: photo || null }).eq("id", linktree.id).eq("owner_id", user.id);
   if (error) redirect(`/dashboard/account?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/dashboard", "layout");
   revalidatePath(`/${slug}`);
@@ -228,15 +223,12 @@ export async function saveCustomDesign(formData: FormData) {
     wallpaper_style: ["solid", "gradient", "soft"],
     button_style: ["solid", "glass", "outline"],
     button_roundness: ["square", "soft", "rounded", "pill"],
-    page_font: ["geist", "inter", "poppins", "playfair", "space", "dm-sans"],
+    page_font: ["geist", "inter", "poppins", "playfair", "space", "dm-sans", "lora", "merriweather", "nunito", "montserrat", "bebas-neue", "caveat"],
   } as const;
   const values = Object.fromEntries(Object.keys(allowed).map((key) => [key, String(formData.get(key) ?? "")]));
   for (const [key, options] of Object.entries(allowed)) if (!(options as readonly string[]).includes(values[key])) redirect("/dashboard/design/customize?error=Pilihan desain tidak valid");
-  const { data: current } = await supabase.from("linktrees").select("avatar_path,slug").eq("id", linktree.id).eq("owner_id", user.id).single();
-  const avatar = await uploadProfileImage(supabase, user.id, formData.get("avatar"));
+  const { data: current } = await supabase.from("linktrees").select("slug").eq("id", linktree.id).eq("owner_id", user.id).single();
   const changes: Record<string, string> = {
-    name: String(formData.get("name") ?? "").trim().slice(0, 60),
-    bio: String(formData.get("bio") ?? "").trim().slice(0, 160),
     title_style: values.title_style,
     title_color: validColor(formData.get("title_color")),
     wallpaper_style: values.wallpaper_style,
@@ -250,13 +242,13 @@ export async function saveCustomDesign(formData: FormData) {
     custom_footer: String(formData.get("custom_footer") ?? "").trim().slice(0, 120),
     theme_preset: "custom",
   };
-  if (avatar) { changes.avatar_path = avatar.path; changes.avatar_url = avatar.url; }
-  const { error } = await supabase.from("linktrees").update(changes).eq("id", linktree.id).eq("owner_id", user.id);
-  if (error) {
-    if (avatar) await supabase.storage.from("profile-images").remove([avatar.path]);
-    redirect(`/dashboard/design/customize?error=${encodeURIComponent(error.message)}`);
-  }
-  if (avatar && current?.avatar_path) await supabase.storage.from("profile-images").remove([current.avatar_path]);
+  const title = String(formData.get("title") ?? "").trim().slice(0, 60);
+  if (!title) redirect("/dashboard/design/customize?error=Title wajib diisi");
+  const [{ error }, { error: headerError }] = await Promise.all([
+    supabase.from("linktrees").update(changes).eq("id", linktree.id).eq("owner_id", user.id),
+    supabase.from("linktree_headers").upsert({ linktree_id: linktree.id, title, bio: String(formData.get("bio") ?? "").trim().slice(0, 160) }),
+  ]);
+  if (error || headerError) redirect(`/dashboard/design/customize?error=${encodeURIComponent((error || headerError)?.message || "Gagal menyimpan design")}`);
   revalidatePath("/dashboard", "layout");
   if (current?.slug) revalidatePath(`/${current.slug}`);
   redirect("/dashboard/design/customize?message=Design disimpan");
@@ -287,7 +279,9 @@ export async function createLinktree(formData: FormData) {
   if (linktrees.length >= 3) redirect("/dashboard/new?error=Maksimal 3 Linktree per akun");
   const slug = String(formData.get("slug") ?? "").trim().toLowerCase();
   if (!/^[a-z0-9-]{3,40}$/.test(slug)) redirect("/dashboard/new?error=Slug harus 3-40 karakter");
-  const { data, error } = await supabase.from("linktrees").insert({ owner_id:user.id, name:String(formData.get("name") ?? "").trim().slice(0,60), bio:String(formData.get("bio") ?? "").trim().slice(0,160), slug }).select("id").single();
+  const name = String(formData.get("name") ?? "").trim().slice(0,60);
+  const bio = String(formData.get("bio") ?? "").trim().slice(0,160);
+  const { data, error } = await supabase.from("linktrees").insert({ owner_id:user.id, name, bio, slug }).select("id").single();
   if (error) redirect(`/dashboard/new?error=${encodeURIComponent(error.message)}`);
   (await cookies()).set("active_linktree_id", data.id, { httpOnly:true, sameSite:"lax", path:"/", maxAge:31536000 });
   redirect("/dashboard/links");
