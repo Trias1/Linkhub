@@ -250,3 +250,4 @@ select { width:100%; border:1px solid var(--line); border-radius:12px; backgroun
   .customize-layout { display:block; width:100%; overflow-x:hidden; }
   .custom-preview-wrap { width:100%; max-width:390px; margin:1rem auto 0; }
 }
+@media (max-width:650px) { .customize-form input,.customize-form textarea,.customize-form select { font-size:16px; } }
