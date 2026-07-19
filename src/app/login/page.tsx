@@ -1,7 +1,9 @@
-﻿import Link from "next/link";
-import { LoginDialog } from "@/app/login/login-dialog";
+import Link from "next/link";
+import { login } from "@/app/auth/actions";
 import { withLocale } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n-server";
-export default async function LoginPage({searchParams}:{searchParams:Promise<{error?:string;message?:string}>}){const query=await searchParams;const locale=await getLocale();return <main className="relative min-h-screen overflow-hidden bg-[#f5f4ec] p-6"><div className="absolute -left-24 -top-24 size-80 rounded-full bg-[#dfff55] blur-3xl"/><div className="absolute -bottom-32 -right-24 size-96 rounded-full bg-[#ffd9e5] blur-3xl"/><nav className="relative z-10 mx-auto flex max-w-6xl items-center justify-between"><Link className="brand" href={withLocale("/",locale)}>LinkHub</Link><div className="header-actions"><Link className="text-sm font-semibold text-[#68685f] hover:text-[#171712]" href={withLocale("/",locale)}>{locale==="en"?"Back to home":"Kembali ke beranda"}</Link></div></nav><LoginDialog error={query.error} message={query.message} locale={locale}/></main>;}
 
-
+export default async function LoginPage({searchParams}:{searchParams:Promise<{error?:string;message?:string}>}) {
+  const query=await searchParams; const locale=await getLocale(); const en=locale==="en";
+  return <main className="auth-shell"><section className="auth-card"><div className="header-actions"><Link className="brand" href={withLocale("/",locale)}>LinkHub</Link></div><h1>{en?"Welcome back":"Selamat datang kembali"}</h1><p>{en?"Sign in to manage your Linktree.":"Masuk untuk mengelola Linktree kamu."}</p>{query.error?<p className="notice error" role="alert">{query.error}</p>:null}{query.message?<p className="notice" role="status">{query.message}</p>:null}<form action={login} className="stack"><input name="website" type="hidden"/><label>Email<input autoComplete="email" name="email" required type="email"/></label><label>{en?"Password":"Kata sandi"}<input autoComplete="current-password" minLength={8} name="password" required type="password"/></label><Link className="text-link" href={withLocale("/forgot-password",locale)}>{en?"Forgot password?":"Lupa kata sandi?"}</Link><button>{en?"Sign in":"Masuk"}</button><p>{en?"No account yet? ":"Belum punya akun? "}<Link className="text-link" href={withLocale("/signup",locale)}>{en?"Sign up":"Daftar"}</Link></p></form></section></main>;
+}
