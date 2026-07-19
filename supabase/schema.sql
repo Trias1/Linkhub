@@ -14,7 +14,7 @@ create table public.links (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   title text not null check (char_length(title) between 1 and 80),
-  url text not null check (url ~ '^https?://'),
+  url text not null check (url ~ '^https?://' or url ~ '^mailto:[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'),
   position integer not null default 0,
   is_active boolean not null default true,
   created_at timestamptz not null default now()
