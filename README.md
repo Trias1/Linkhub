@@ -1,28 +1,29 @@
 # LinkHub
 
-LinkHub adalah platform open-source untuk membuat satu halaman berisi tautan, toko, profil, dan kontak yang mudah dibagikan. Dashboard-nya menyatukan pengelolaan konten, desain, insight, dan beberapa Linktree dalam satu aplikasi.
+LinkHub is an open-source platform for building a shareable page for your links, products, profile, and contacts. Its unified dashboard makes it easy to manage content, customize the design, review insights, and operate multiple Linktrees from one account.
 
-## Fitur
+**Live:** https://linkhub-dun.vercel.app
 
-- Kelola tautan dan koleksi dengan drag-and-drop.
-- Buat katalog produk beserta gambar dan harga Rupiah.
-- Kustomisasi tema, warna, wallpaper, tombol, font, profil, dan footer.
-- Live preview untuk halaman publik.
-- Insight views, clicks, contacts, dan rentang tanggal.
-- Multi-Linktree hingga tiga profil per akun.
-- Autentikasi, MFA authenticator, trusted devices, dan pengaturan privasi.
-- Dashboard admin untuk memantau pengguna dan penggunaan aplikasi.
-- Dukungan Bahasa Indonesia dan English.
+## Features
 
-## Teknologi
+- Manage links and collections with drag-and-drop ordering.
+- Build product catalogs with images and formatted Indonesian Rupiah prices.
+- Customize themes, colors, wallpapers, buttons, fonts, profiles, and footers.
+- Preview public pages while editing.
+- Track views, clicks, contacts, and custom date ranges.
+- Create and switch between up to three Linktrees per account.
+- Use password authentication, authenticator MFA, and trusted devices.
+- Monitor users and application activity from the admin dashboard.
+- Switch between Indonesian and English.
 
-- Next.js 16
-- React 19
-- Supabase Auth, Postgres, Storage, dan Row Level Security
-- TypeScript
-- Tailwind CSS
+## Tech Stack
 
-## Menjalankan Lokal
+- Next.js 16 and React 19
+- TypeScript and Tailwind CSS
+- Supabase Auth, Postgres, Storage, and Row Level Security
+- Vercel
+
+## Local Development
 
 ```bash
 git clone https://github.com/Trias1/Linkhub.git
@@ -32,24 +33,34 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Buka `http://localhost:3000`.
-
-Di Windows PowerShell, gunakan:
+On Windows PowerShell, replace the copy command with:
 
 ```powershell
 Copy-Item .env.example .env.local
 ```
 
-## Supabase
+Open `http://localhost:3000`.
 
-1. Buat project Supabase.
-2. Isi variabel pada `.env.local`.
-3. Jalankan `supabase/schema.sql` melalui SQL Editor.
-4. Jalankan migration berikutnya di folder `supabase` sesuai urutan nomor.
+## Environment Variables
 
-Jangan pernah mengekspos `SUPABASE_SERVICE_ROLE_KEY` ke browser atau memasukkan `.env.local` ke Git.
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+SUPABASE_SERVICE_ROLE_KEY=
+```
 
-## Scripts
+`SUPABASE_SERVICE_ROLE_KEY` is required only for privileged server operations such as full account deletion and administrative analytics. Never expose it to browser code or commit it to Git.
+
+## Supabase Setup
+
+1. Create a Supabase project.
+2. Add the project credentials to `.env.local`.
+3. Run `supabase/schema.sql` in the Supabase SQL Editor.
+4. Run the remaining SQL migrations in numerical order.
+5. Add the application URL and `/auth/callback` URL to the Supabase authentication URL configuration.
+
+## Commands
 
 ```bash
 npm run dev
@@ -58,12 +69,12 @@ npm run build
 npm run start
 ```
 
-## Kontribusi
+## Contributing
 
-Kontribusi, laporan bug, dan ide fitur sangat diterima. Fork repository ini, buat branch perubahan, lalu kirim pull request dengan penjelasan yang jelas.
+Contributions, bug reports, and feature ideas are welcome. Fork the repository, create a focused branch, and open a pull request with a clear explanation of the change.
 
-## Lisensi
+## License
 
-LinkHub adalah software open-source yang dirilis menggunakan [MIT License](LICENSE).
+LinkHub is open-source software released under the [MIT License](LICENSE).
 
 Built with care by Trias.
