@@ -2,7 +2,7 @@
 
 LinkHub is an open-source platform for building a shareable page for your links, products, profile, and contacts. Its unified dashboard makes it easy to manage content, customize the design, review insights, and operate multiple Linktrees from one account.
 
-**Live:** https://linkhub-dun.vercel.app
+**Live:** https://linkhub.west-solutions.web.id
 
 ## Features
 

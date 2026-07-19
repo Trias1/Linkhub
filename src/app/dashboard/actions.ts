@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -120,9 +120,12 @@ export async function addPresetLink(formData: FormData) {
   const { supabase, user, linktree } = await authenticatedClient();
   const platform = String(formData.get("platform") ?? "link");
   const collectionId = String(formData.get("collection_id") ?? "");
-  const { data: collection } = await supabase.from("link_collections").select("id").eq("id", collectionId).eq("linktree_id", linktree.id).single();
+  const [{ data: collection }, { data: existing }, { count }] = await Promise.all([
+    supabase.from("link_collections").select("id").eq("id", collectionId).eq("linktree_id", linktree.id).single(),
+    supabase.from("links").select("id").eq("collection_id", collectionId).eq("platform", platform).maybeSingle(),
+    supabase.from("links").select("id", { count: "exact", head: true }).eq("linktree_id", linktree.id),
+  ]);
   if (!collection) redirect("/dashboard/links?error=Collection tidak valid");
-  const { data: existing } = await supabase.from("links").select("id").eq("collection_id", collectionId).eq("platform", platform).maybeSingle();
   if (existing) redirect(`/dashboard/links?error=${encodeURIComponent(`${platform} sudah ditambahkan di collection ini`)}`);
   const presets: Record<string, { title: string; url: string }> = {
     instagram: { title: "Instagram", url: "https://instagram.com/" },
@@ -134,11 +137,9 @@ export async function addPresetLink(formData: FormData) {
     ...Object.fromEntries(Object.entries(commercePlatforms).map(([key, item]) => [key, { title: item.label, url: item.url }])),
   };
   const preset = presets[platform] ?? presets.website;
-  const { count } = await supabase.from("links").select("id", { count: "exact", head: true }).eq("linktree_id", linktree.id);
   const { error } = await supabase.from("links").insert({ user_id: user.id, linktree_id: linktree.id, collection_id: collectionId, platform, title: preset.title, url: preset.url, position: count ?? 0 });
   if (error) redirect(`/dashboard/links?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/dashboard/links");
-  redirect("/dashboard/links");
 }
 
 export async function reorderCollections(ids: string[]) {
