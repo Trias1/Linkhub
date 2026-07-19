@@ -16,7 +16,7 @@ async function authenticatedClient() {
 
 function validUrl(value: FormDataEntryValue | null) {
   const url = new URL(String(value ?? ""));
-  if (!["http:", "https:"].includes(url.protocol)) throw new Error("URL tidak valid");
+  if (!["http:", "https:", "mailto:"].includes(url.protocol)) throw new Error("URL tidak valid");
   return url.toString();
 }
 
@@ -132,7 +132,7 @@ export async function addPresetLink(formData: FormData) {
     tiktok: { title: "TikTok", url: "https://tiktok.com/" },
     youtube: { title: "YouTube", url: "https://youtube.com/" },
     whatsapp: { title: "WhatsApp", url: "https://wa.me/" },
-    email: { title: "Email", url: "https://mail.google.com/" },
+    email: { title: "Email", url: "mailto:username@gmail.com" },
     website: { title: "Website", url: "https://example.com/" },
     ...Object.fromEntries(Object.entries(commercePlatforms).map(([key, item]) => [key, { title: item.label, url: item.url }])),
   };
