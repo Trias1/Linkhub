@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LinkHub
 
-## Getting Started
+LinkHub adalah platform open-source untuk membuat satu halaman berisi tautan, toko, profil, dan kontak yang mudah dibagikan. Dashboard-nya menyatukan pengelolaan konten, desain, insight, dan beberapa Linktree dalam satu aplikasi.
 
-First, run the development server:
+## Fitur
+
+- Kelola tautan dan koleksi dengan drag-and-drop.
+- Buat katalog produk beserta gambar dan harga Rupiah.
+- Kustomisasi tema, warna, wallpaper, tombol, font, profil, dan footer.
+- Live preview untuk halaman publik.
+- Insight views, clicks, contacts, dan rentang tanggal.
+- Multi-Linktree hingga tiga profil per akun.
+- Autentikasi, MFA authenticator, trusted devices, dan pengaturan privasi.
+- Dashboard admin untuk memantau pengguna dan penggunaan aplikasi.
+- Dukungan Bahasa Indonesia dan English.
+
+## Teknologi
+
+- Next.js 16
+- React 19
+- Supabase Auth, Postgres, Storage, dan Row Level Security
+- TypeScript
+- Tailwind CSS
+
+## Menjalankan Lokal
+
+```bash
+git clone https://github.com/Trias1/Linkhub.git
+cd Linkhub
+npm install
+cp .env.example .env.local
+npm run dev
+```
+
+Buka `http://localhost:3000`.
+
+Di Windows PowerShell, gunakan:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+## Supabase
+
+1. Buat project Supabase.
+2. Isi variabel pada `.env.local`.
+3. Jalankan `supabase/schema.sql` melalui SQL Editor.
+4. Jalankan migration berikutnya di folder `supabase` sesuai urutan nomor.
+
+Jangan pernah mengekspos `SUPABASE_SERVICE_ROLE_KEY` ke browser atau memasukkan `.env.local` ke Git.
+
+## Scripts
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run lint
+npm run build
+npm run start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Kontribusi
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Kontribusi, laporan bug, dan ide fitur sangat diterima. Fork repository ini, buat branch perubahan, lalu kirim pull request dengan penjelasan yang jelas.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Lisensi
 
-## Learn More
+LinkHub adalah software open-source yang dirilis menggunakan [MIT License](LICENSE).
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Built with care by Trias.
