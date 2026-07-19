@@ -244,3 +244,9 @@ select { width:100%; border:1px solid var(--line); border-radius:12px; backgroun
 .sidebar-nav a,.account-menu summary,.account-dropdown a,.account-dropdown button,.insight-card,.collection-card,.panel { transition:background-color .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease,opacity .18s ease; }
 .sidebar-nav a:active,.account-dropdown a:active,.account-dropdown button:active { transform:scale(.98); }
 @keyframes dashboard-page-in { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+
+.customize-layout,.customize-form,.custom-section,.custom-preview-wrap,.custom-section label,.custom-section fieldset { min-width:0; }
+@media (max-width:1100px) {
+  .customize-layout { display:block; width:100%; overflow-x:hidden; }
+  .custom-preview-wrap { width:100%; max-width:390px; margin:1rem auto 0; }
+}
