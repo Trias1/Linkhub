@@ -1,0 +1,1 @@
+export default function DashboardLoading(){return <div className="dashboard-loading" aria-label="Loading"><span/><span/><span/></div>;}

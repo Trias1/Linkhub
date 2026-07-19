@@ -1,8 +1,9 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-export async function getDashboardContext() {
+export const getDashboardContext = cache(async () => {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -14,4 +15,4 @@ export async function getDashboardContext() {
   const activeId = (await cookies()).get("active_linktree_id")?.value;
   const linktree = linktrees.find((item) => item.id === activeId) ?? linktrees[0];
   return { supabase, user, linktree, linktrees, isAdmin:Boolean(account?.is_admin) };
-}
+});

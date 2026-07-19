@@ -236,3 +236,11 @@ select { width:100%; border:1px solid var(--line); border-radius:12px; backgroun
   .dashboard-content button,.dashboard-content .button-link { font-size:.82rem; }
   .dashboard-content input,.dashboard-content textarea,.dashboard-content select { font-size:.88rem; }
 }
+.dashboard-loading { min-height:55vh; display:grid; align-content:center; gap:.8rem; max-width:760px; }
+.dashboard-loading span { display:block; height:72px; border-radius:18px; background:linear-gradient(90deg,#e8e7df 25%,#f7f6ef 50%,#e8e7df 75%); background-size:200% 100%; animation:loading-shimmer 1.2s infinite linear; }
+.dashboard-loading span:first-child { width:45%; height:40px; }
+@keyframes loading-shimmer { to { background-position:-200% 0; } }
+.dashboard-page-transition { animation:dashboard-page-in .24s cubic-bezier(.22,1,.36,1); }
+.sidebar-nav a,.account-menu summary,.account-dropdown a,.account-dropdown button,.insight-card,.collection-card,.panel { transition:background-color .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease,opacity .18s ease; }
+.sidebar-nav a:active,.account-dropdown a:active,.account-dropdown button:active { transform:scale(.98); }
+@keyframes dashboard-page-in { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
