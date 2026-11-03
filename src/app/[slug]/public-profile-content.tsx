@@ -32,11 +32,12 @@ function Thumb({ item }: { item: Product }) {
   return item.image_url ? <span className="lh-thumb" role="img" aria-label={item.title} style={{ backgroundImage: `url(${item.image_url})` }} /> : <span className="lh-thumb lh-thumb-empty"><PlatformIcon platform={item.platform} size={28} /></span>;
 }
 
-export function PublicProfileContent({ profile, linkCollections, links, shopCollections, products, locale }: { locale:Locale; profile: Profile; linkCollections: LinkCollection[]; links: LinkItem[]; shopCollections: ShopCollection[]; products: Product[] }) {
+export function PublicProfileContent({ profile, linkCollections, links, shopCollections, products, locale, track = true }: { locale:Locale; track?: boolean; profile: Profile; linkCollections: LinkCollection[]; links: LinkItem[]; shopCollections: ShopCollection[]; products: Product[] }) {
   const en = locale === "en";
   const [category, setCategory] = useState("all");
   const [term, setTerm] = useState("");
-  useEffect(() => { void fetch(`/api/view/${profile.id}`, { method: "POST" }); }, [profile.id]);
+  // Pratinjau di dashboard (?preview=1) tidak dihitung sebagai kunjungan.
+  useEffect(() => { if (track) void fetch(`/api/view/${profile.id}`, { method: "POST" }); }, [profile.id, track]);
 
   const stores = links.filter((item) => isCommercePlatform(item.platform));
   const otherLinks = links.filter((item) => !isCommercePlatform(item.platform));

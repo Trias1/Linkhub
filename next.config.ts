@@ -13,11 +13,11 @@ const csp = [
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   `connect-src 'self' ${supabaseUrl} ${supabaseUrl.replace(/^https:/, "wss:")}`.trim(),
-  `frame-src ${turnstile}`,
+  `frame-src 'self' ${turnstile}`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
-  "frame-ancestors 'none'",
+  "frame-ancestors 'self'",
   ...(isDev ? [] : ["upgrade-insecure-requests"]),
 ].join("; ");
 
@@ -34,7 +34,7 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: [
           { key: "Content-Security-Policy", value: csp },
-          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },

@@ -2,60 +2,127 @@
 
 import { useState, useTransition } from "react";
 import { PlatformIcon } from "@/components/platform-icon";
-import { ShareProfileButton } from "@/components/share-profile-button";
 import { formatRupiah } from "@/lib/rupiah";
+import { commercePlatforms, detectPlatform, platformColor, platformLabel } from "@/lib/commerce-platforms";
+import { dateInputValue, formatEndDate, formatStartDate, productStatus, type Product, type ProductStatus } from "@/lib/products";
 import { RupiahInput } from "./rupiah-input";
-import { commercePlatforms } from "@/lib/commerce-platforms";
-import type { Locale } from "@/lib/i18n";
-import { addProduct, addShopCollection, deleteProduct, deleteShopCollection, reorderShopCollections, updateProduct, updateShopCollection } from "../actions";
+import { addProduct, addShopCollection, deleteProduct, deleteShopCollection, moveProduct, setProductActive, updateProduct, updateShopCollection } from "../actions";
 
-type ShopCollection = { id: string; title: string; position: number };
-type Product = { id: string; collection_id: string; platform: string; title: string; url: string; price: string; image_url: string | null; is_active: boolean };
-type LinkCollection = { id: string; title: string };
-type LinkItem = { id: string; collection_id: string | null; title: string; platform: string | null; is_active: boolean };
-type Profile = { name: string; slug: string | null; bio: string; avatar_url: string | null; background_color: string; text_color: string; button_color: string };
+type Category = { id: string; title: string; position: number };
+const statusLabel: Record<ProductStatus, string> = { live: "Live", scheduled: "Scheduled", ended: "Ended", hidden: "Hidden" };
 
-export function ShopWorkspace({ initialCollections, products, linkCollections, links, profile,locale }: { locale:Locale; initialCollections: ShopCollection[]; products: Product[]; linkCollections: LinkCollection[]; links: LinkItem[]; profile: Profile }) {
-  const en=locale==="en";
-  const [collections, setCollections] = useState(initialCollections);
-  const [preview, setPreview] = useState<"links" | "shop">("shop");
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+function Chevron({ up }: { up?: boolean }) { return <svg viewBox="0 0 24 24" aria-hidden="true"><path d={up ? "m6 15 6-6 6 6" : "m6 9 6 6 6-6"} /></svg>; }
 
-  function dropOn(targetId: string) {
-    if (!draggedId || draggedId === targetId) return;
-    const next = [...collections];
-    const from = next.findIndex((item) => item.id === draggedId);
-    const to = next.findIndex((item) => item.id === targetId);
-    const [moved] = next.splice(from, 1);
-    next.splice(to, 0, moved);
-    setCollections(next);
-    setDraggedId(null);
-    startTransition(() => reorderShopCollections(next.map((item) => item.id)));
-  }
-
-  return <div className="links-workspace">
-    <section className="links-builder">
-      <div className="builder-heading"><div><p className="section-label">{en?"My Linktree":"Linktree Saya"}</p><h1>{en?"Shop":"Toko"}</h1></div>{collections.length?<form action={addShopCollection}><button>{en?"+ Add collection":"+ Tambah koleksi"}</button></form>:null}</div>
-      {collections.map((collection) => { const collectionProducts = products.filter((item) => item.collection_id === collection.id); return <article className={`collection-card${draggedId === collection.id ? " dragging" : ""}`} draggable onDragStart={() => setDraggedId(collection.id)} onDragOver={(event) => event.preventDefault()} onDrop={() => dropOn(collection.id)} key={collection.id}>
-        <div className="collection-header"><span className="drag-handle">⋮⋮</span><form action={updateShopCollection} className="collection-title"><input type="hidden" name="id" value={collection.id} /><input name="title" defaultValue={collection.title} aria-label="Shop collection title" /><button className="secondary">{en?"Save":"Simpan"}</button></form><form action={deleteShopCollection} onSubmit={(event)=>{if(!confirm("Delete this category?"))event.preventDefault();}}><input type="hidden" name="id" value={collection.id} /><button className="icon-danger" aria-label="Delete shop collection">×</button></form></div>
-        <form action={addProduct} className="product-add"><input type="hidden" name="collection_id" value={collection.id} /><label className="field-label"><span>{en?"Platform":"Platform"}</span><select name="platform" defaultValue="website"><option value="website">Website / Other</option>{Object.entries(commercePlatforms).map(([value,item]) => <option value={value} key={value}>{item.label}</option>)}</select></label><label className="field-label"><span>{en?"Product name":"Nama produk"}</span><input name="title" required maxLength={100} placeholder={en?"Product name":"Nama produk"} /></label><label className="field-label"><span>{en?"Product URL":"URL produk"}</span><input name="url" required type="url" placeholder="https://..." /></label><RupiahInput /><label className="image-input">Product image<input name="image" type="file" accept="image/jpeg,image/png,image/webp" required /></label><button>+ Add product</button></form>
-        <div className="collection-links">{collectionProducts.map((item) => <form action={updateProduct} className="product-editor" key={item.id}>{item.image_url ? <span className="product-image" style={{ backgroundImage: `url(${item.image_url})` }} /> : <span className="product-icon"><PlatformIcon platform={item.platform} /></span>}<input type="hidden" name="id" value={item.id} /><label className="field-label"><span>{en?"Platform":"Platform"}</span><select name="platform" defaultValue={item.platform}><option value="website">Website / Other</option>{Object.entries(commercePlatforms).map(([value,platform]) => <option value={value} key={value}>{platform.label}</option>)}</select></label><label className="field-label"><span>{en?"Product name":"Nama produk"}</span><input name="title" required defaultValue={item.title} /></label><label className="field-label"><span>{en?"Product URL":"URL produk"}</span><input name="url" type="url" required defaultValue={item.url} /></label><RupiahInput defaultValue={item.price} /><label className="replace-image">Ganti gambar<input name="image" type="file" accept="image/jpeg,image/png,image/webp" /></label><label className="check status-field"><span>Status</span><span><input name="is_active" type="checkbox" defaultChecked={item.is_active} /> {en?"Active":"Aktif"}</span></label><button>{en?"Save":"Simpan"}</button><button className="danger" formAction={deleteProduct} onClick={(event)=>{if(!confirm("Delete this product?"))event.preventDefault();}}>×</button></form>)}{!collectionProducts.length ? <p className="empty small-empty">{en?"This collection has no linked products yet.":"Koleksi ini belum memiliki produk tertaut."}</p> : null}</div>
-      </article>; })}
-      {!collections.length ? <div className="panel empty-collection"><h2>{en?"No collection yet":"Belum punya koleksi"}</h2><p>{en?"Create a collection to start adding linked products.":"Buat koleksi untuk mulai menambahkan produk tertaut."}</p><form action={addShopCollection}><button>{en?"+ Create a new collection":"+ Buat koleksi baru"}</button></form></div> : null}
-      {isPending ? <p className="saving-order">{en?"Saving order…":"Menyimpan urutan…"}</p> : null}
-    </section>
-    <aside className="preview-column">
-      <ShareProfileButton slug={profile.slug} name={profile.name} />
-      <div className="linktree-preview" style={{ background: profile.background_color, color: profile.text_color }}>
-        <div className="preview-profile">{profile.avatar_url ? <span className="preview-photo" role="img" aria-label={`${profile.name} profile`} style={{ backgroundImage: `url(${profile.avatar_url})` }} /> : <div className="preview-avatar">{profile.name.slice(0, 1).toUpperCase()}</div>}<h2>{profile.name}</h2><p>{profile.bio}</p></div>
-        <div className="preview-switch"><button className={preview === "links" ? "active" : ""} onClick={() => setPreview("links")}>{en?"Links":"Tautan"}</button><button className={preview === "shop" ? "active" : ""} onClick={() => setPreview("shop")}>{en?"Shop":"Toko"}</button></div>
-        {preview === "shop" ? <div className="preview-products">{collections.map((collection) => { const visible = products.filter((item) => item.collection_id === collection.id && item.is_active); return visible.length ? <details className="shop-preview-group" open key={collection.id}><summary>{collection.title}</summary>{visible.map((item) => <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ background: profile.button_color }} key={item.id}>{item.image_url ? <span className="product-thumb product-image" style={{ backgroundImage: `url(${item.image_url})` }} /> : <span className="product-thumb"><PlatformIcon platform={item.platform} /></span>}<span><strong>{item.title}</strong>{item.price ? <small>{formatRupiah(item.price)}</small> : null}</span><b>↗</b></a>)}</details> : null; })}{!products.some((item) => item.is_active) ? <div className="preview-shop"><strong>{en?"No products yet":"Belum ada produk"}</strong><p>{en?"Linked products will appear here.":"Produk tertaut akan muncul di sini."}</p></div> : null}</div> : <div className="preview-collections">{linkCollections.map((collection) => { const visible = links.filter((item) => item.collection_id === collection.id && item.is_active); return visible.length ? <section key={collection.id}><h3>{collection.title}</h3>{visible.map((item) => <span style={{ background: profile.button_color }} key={item.id}><i><PlatformIcon platform={item.platform} />{item.title}</i><b>↗</b></span>)}</section> : null; })}</div>}
-        <footer>LinkHub by Trias</footer>
+function ProductForm({ categories, product, onCancel }: { categories: Category[]; product?: Product; onCancel?: () => void }) {
+  const [url, setUrl] = useState(product?.url ?? "");
+  const detected = url ? detectPlatform(url) : null;
+  const [open, setOpen] = useState(Boolean(product));
+  return <form action={product ? updateProduct : addProduct} className="lh-product-form">
+    {product ? <input type="hidden" name="id" value={product.id} /> : null}
+    <div className="lh-paste">
+      <label className="lh-field">{product ? "Product link" : "Paste a product link"}<input name="url" type="url" inputMode="url" required value={url} onChange={(event) => { setUrl(event.target.value); if (event.target.value) setOpen(true); }} placeholder="https://shopee.co.id/..." /></label>
+      {!open ? <button type="button" className="lh-btn" onClick={() => setOpen(true)}>Continue</button> : null}
+    </div>
+    <p className="lh-detect" aria-live="polite">{detected ? detected === "website" ? "Other store. The button will say “View product”." : <><i style={{ background: platformColor(detected) }} /><b>{platformLabel(detected)}</b> detected. The button will say &ldquo;Buy on {platformLabel(detected)}&rdquo;.</> : "Supports Shopee, Tokopedia, TikTok Shop, Lazada, Facebook and more."}</p>
+    {open ? <div className="lh-form-grid">
+      <label className="lh-photo">{product?.image_url ? <span style={{ backgroundImage: `url(${product.image_url})` }} /> : <span>Photo<br />JPG, PNG, WebP<br />max 5 MB</span>}<input name="image" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Product photo" /></label>
+      <label className="lh-field lh-wide">Product name<input name="title" required maxLength={100} defaultValue={product?.title} placeholder="e.g. 2-tier rotating spice rack" /></label>
+      <RupiahInput defaultValue={product?.price} />
+      <RupiahInput name="compare_price" label="Original price" hint="Optional, shown crossed out" defaultValue={product?.compare_price} />
+      <label className="lh-field">Category<select name="collection_id" defaultValue={product?.collection_id ?? categories[0]?.id}>{categories.map((category) => <option value={category.id} key={category.id}>{category.title}</option>)}</select></label>
+      <label className="lh-field">Store<select name="platform" defaultValue={product ? product.platform : "auto"}><option value="auto">Detect from link</option><option value="website">Other / website</option>{Object.entries(commercePlatforms).map(([value, item]) => <option value={value} key={value}>{item.label}</option>)}</select></label>
+      <label className="lh-field">Show from <small>Optional</small><input name="starts_at" type="date" defaultValue={dateInputValue(product?.starts_at ?? null)} /></label>
+      <label className="lh-field">Until <small>Hidden automatically after</small><input name="ends_at" type="date" defaultValue={dateInputValue(product?.ends_at ?? null, true)} /></label>
+      <label className="lh-check"><input type="checkbox" name="is_featured" defaultChecked={product?.is_featured} /> Show in &ldquo;On sale&rdquo;</label>
+      {product ? <label className="lh-check"><input type="checkbox" name="is_active" defaultChecked={product.is_active} /> Visible on my page</label> : null}
+      <div className="lh-form-actions">
+        {product ? <button className="lh-btn secondary small lh-danger" formAction={deleteProduct} formNoValidate onClick={(event) => { if (!confirm("Delete this product?")) event.preventDefault(); }}>Delete</button> : null}
+        <span />
+        <button type="button" className="lh-btn secondary small" onClick={() => { if (onCancel) onCancel(); else { setOpen(false); setUrl(""); } }}>Cancel</button>
+        <button className="lh-btn small">{product ? "Save" : "Save product"}</button>
       </div>
+    </div> : null}
+  </form>;
+}
+
+function ProductRow({ product, categories, clicks, first, last }: { product: Product; categories: Category[]; clicks: number | null; first: boolean; last: boolean }) {
+  const [editing, setEditing] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const status = productStatus(product);
+  const when = status === "scheduled" && product.starts_at ? `from ${formatStartDate(product.starts_at, "en")}` : product.ends_at ? `${status === "ended" ? "ended" : "until"} ${formatEndDate(product.ends_at, "en")}` : "";
+  return <li className={`lh-item${pending ? " pending" : ""}`}>
+    <div className="lh-item-row">
+      <div className="lh-order"><button type="button" aria-label="Move up" disabled={first || pending} onClick={() => startTransition(() => moveProduct(product.id, -1))}><Chevron up /></button><button type="button" aria-label="Move down" disabled={last || pending} onClick={() => startTransition(() => moveProduct(product.id, 1))}><Chevron /></button></div>
+      {product.image_url ? <span className="lh-item-thumb" style={{ backgroundImage: `url(${product.image_url})` }} /> : <span className="lh-item-thumb"><PlatformIcon platform={product.platform} /></span>}
+      <button type="button" className="lh-item-main" onClick={() => setEditing(!editing)} aria-expanded={editing}>
+        <b>{product.title}</b>
+        <span><i style={{ background: platformColor(product.platform) }} />{platformLabel(product.platform)}{product.price ? ` · ${formatRupiah(product.price)}` : ""}{when ? ` · ${when}` : ""}</span>
+      </button>
+      <span className={`lh-status ${product.is_featured && status === "live" ? "promo" : status}`}>{product.is_featured && status === "live" ? "On sale" : statusLabel[status]}</span>
+      <span className="lh-clicks">{clicks === null ? "–" : <><b>{clicks}</b>clicks</>}</span>
+      <button type="button" className="lh-switch" role="switch" aria-checked={product.is_active} aria-label="Visible on my page" disabled={pending} onClick={() => startTransition(() => setProductActive(product.id, !product.is_active))} />
+    </div>
+    {editing ? <ProductForm categories={categories} product={product} onCancel={() => setEditing(false)} /> : null}
+  </li>;
+}
+
+export function ProductsWorkspace({ slug, error, message, collections, products, clicksByProduct, clicksByPlatform, statsReady }: { slug: string | null; error?: string; message?: string; collections: Category[]; products: Product[]; clicksByProduct: Record<string, number>; clicksByPlatform: Record<string, number>; statsReady: boolean }) {
+  const [filter, setFilter] = useState<"all" | ProductStatus>("all");
+  const statuses = products.map((item) => productStatus(item));
+  const count = (status: ProductStatus) => statuses.filter((item) => item === status).length;
+  const totalClicks = Object.values(clicksByPlatform).reduce((sum, value) => sum + value, 0);
+  const platforms = Object.entries(clicksByPlatform).sort((a, b) => b[1] - a[1]);
+  const top = platforms[0]?.[1] ?? 0;
+  const sorted = collections.flatMap((category) => products.filter((item) => item.collection_id === category.id));
+  const pageUrl = slug ? `/en/${slug}` : null;
+
+  return <div className="lh-dash">
+    <div className="lh-dash-main">
+      <header className="lh-dash-top">
+        <div><h1>Products</h1><p>{products.length} products · {count("live")} live{count("scheduled") ? ` · ${count("scheduled")} scheduled` : ""}</p></div>
+        {pageUrl ? <a className="lh-btn secondary small" href={pageUrl} target="_blank" rel="noopener noreferrer">View page</a> : null}
+      </header>
+      {error ? <p className="lh-alert" role="alert">{error}</p> : null}
+      {message ? <p className="lh-ok" role="status">{message}</p> : null}
+
+      <div className="lh-stats">
+        <div><small>Buy clicks, 7 days</small><b>{statsReady ? totalClicks : "–"}</b></div>
+        <div><small>Live products</small><b>{count("live")}</b></div>
+        <div><small>On sale</small><b>{products.filter((item, index) => item.is_featured && statuses[index] === "live").length}</b></div>
+      </div>
+
+      <section className="lh-box">
+        <h2>Add a product</h2>
+        {collections.length ? <ProductForm categories={collections} /> : <div className="lh-empty-box"><p>Create a category first, for example &ldquo;Kitchen&rdquo; or &ldquo;Fashion&rdquo;. Shoppers can filter by category on your page.</p><form action={addShopCollection}><button className="lh-btn small">Create first category</button></form></div>}
+      </section>
+
+      <section className="lh-box">
+        <h2>Buy clicks by store <span className="lh-hint">· 7 days</span></h2>
+        {!statsReady ? <p className="lh-hint">Run SQL file 018 in Supabase to start counting clicks per product and store.</p> : platforms.length ? <div className="lh-bars">{platforms.map(([platform, value]) => <div className="lh-bar" key={platform}><span>{platformLabel(platform)}</span><div><i style={{ width: `${Math.max(4, (value / top) * 100)}%`, background: platformColor(platform) }} /></div><b>{value}</b></div>)}</div> : <p className="lh-hint">No clicks yet. Clicks show up here when shoppers tap a Buy button.</p>}
+      </section>
+
+      <section className="lh-box">
+        <div className="lh-list-head">
+          <h2>Your products</h2>
+          <div className="lh-filter" role="group" aria-label="Filter by status">{(["all", "live", "scheduled", "ended", "hidden"] as const).map((key) => key === "all" || count(key) ? <button type="button" key={key} aria-pressed={filter === key} onClick={() => setFilter(key)}>{key === "all" ? `All ${products.length}` : `${statusLabel[key]} ${count(key)}`}</button> : null)}</div>
+        </div>
+        {collections.map((category) => { const items = sorted.filter((item) => item.collection_id === category.id); const shown = items.filter((item) => filter === "all" || productStatus(item) === filter); return filter !== "all" && !shown.length ? null : <div className="lh-group" key={category.id}>
+          <h3>{category.title} <span>{items.length}</span></h3>
+          {shown.length ? <ul className="lh-items">{shown.map((item) => <ProductRow key={JSON.stringify(item)} product={item} categories={collections} clicks={statsReady ? clicksByProduct[item.id] ?? 0 : null} first={items[0].id === item.id} last={items[items.length - 1].id === item.id} />)}</ul> : <p className="lh-hint">No products in this category yet.</p>}
+        </div>; })}
+        {!products.length && collections.length ? <p className="lh-hint">Paste your first product link above.</p> : null}
+      </section>
+
+      {collections.length ? <section className="lh-box">
+        <h2>Categories</h2>
+        <p className="lh-hint">Shown as filter buttons on your page when you have more than one.</p>
+        <ul className="lh-categories">{collections.map((category) => <li key={category.id}><form action={updateShopCollection}><input type="hidden" name="id" value={category.id} /><input name="title" defaultValue={category.title} maxLength={80} aria-label="Category name" required /><button className="lh-btn secondary small">Rename</button></form><form action={deleteShopCollection} onSubmit={(event) => { if (!confirm("Delete this category and all of its products?")) event.preventDefault(); }}><input type="hidden" name="id" value={category.id} /><button className="lh-btn secondary small lh-danger">Delete</button></form></li>)}</ul>
+        <form action={addShopCollection}><button className="lh-btn secondary small">+ Add category</button></form>
+      </section> : null}
+    </div>
+
+    <aside className="lh-dash-aside">
+      {pageUrl ? <><div className="lh-phone"><iframe src={`${pageUrl}?preview=1`} title="Preview of your public page" tabIndex={-1} loading="lazy" /></div><p className="lh-hint lh-center">Live preview. Refreshes after you save.</p></> : <p className="lh-hint">Set a page address in Account to see a preview.</p>}
     </aside>
   </div>;
 }
-
-
-

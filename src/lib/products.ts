@@ -26,6 +26,8 @@ export function productStatus(product: Pick<Product, "is_active" | "starts_at" |
 
 export const liveProducts = <T extends Pick<Product, "is_active" | "starts_at" | "ends_at">>(items: T[]) => { const now = Date.now(); return items.filter((item) => productStatus(item, now) === "live"); };
 
+export const daysAgoIso = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
 const wib = (locale: string) => new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "id-ID", { day: "numeric", month: "short", timeZone: "Asia/Jakarta" });
 // ends_at disimpan sebagai 00:00 WIB hari berikutnya, jadi tanggal yang ditampilkan dikurangi 1 ms.
 export const formatEndDate = (value: string, locale = "id") => wib(locale).format(new Date(Date.parse(value) - 1));

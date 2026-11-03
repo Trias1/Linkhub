@@ -9,7 +9,7 @@ import { type Locale, withLocale, withoutLocale } from "@/lib/i18n";
 import { switchLinktree } from "./actions";
 
 type Linktree={id:string;name:string;slug:string|null};
-const items=[{href:"/dashboard/links",id:"Tautan",en:"Links",icon:"links"},{href:"/dashboard/shops",id:"Toko",en:"Shops",icon:"shop"},{href:"/dashboard/design",id:"Desain",en:"Design",icon:"design"},{href:"/dashboard/insights",id:"Insight",en:"Insights",icon:"insights"}] as const;
+const items=[{href:"/dashboard/links",id:"Tautan",en:"Links",icon:"links"},{href:"/dashboard/shops",id:"Produk",en:"Products",icon:"shop"},{href:"/dashboard/design",id:"Desain",en:"Design",icon:"design"},{href:"/dashboard/insights",id:"Insight",en:"Insights",icon:"insights"}] as const;
 
 export function DashboardSidebar({name,avatarUrl,email,slug,isAdmin,activeId,linktrees,locale}:{name:string;avatarUrl?:string|null;email:string;slug?:string|null;isAdmin:boolean;activeId:string;linktrees:Linktree[];locale:Locale}){
   const pathname=withoutLocale(usePathname());const [collapsed,setCollapsed]=useState(false);const [mobile,setMobile]=useState(false);const accountRef=useRef<HTMLDetailsElement>(null);const en=locale==="en";

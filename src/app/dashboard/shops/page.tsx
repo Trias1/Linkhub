@@ -1,18 +1,20 @@
 ﻿import { getDashboardContext } from "@/lib/active-linktree";
-import { getLocale } from "@/lib/i18n-server";
-import { ShopWorkspace } from "./shop-workspace";
+import { daysAgoIso, fetchProducts } from "@/lib/products";
+import { ProductsWorkspace } from "./shop-workspace";
 
-export default async function ShopsPage({ searchParams }: { searchParams:Promise<{ error?:string }> }) {
+export const metadata = { title: "Products · LinkHub" };
+
+export default async function ShopsPage({ searchParams }: { searchParams:Promise<{ error?:string; message?:string }> }) {
   const { supabase, linktree } = await getDashboardContext();
-  const locale=await getLocale();
-  const [{ data: profile }, { data: header }, { data: collections }, { data: products }, { data: linkCollections }, { data: links }] = await Promise.all([
-    supabase.from("linktrees").select("name,bio,slug,avatar_url,background_color,text_color,button_color").eq("id",linktree.id).single(),
-    supabase.from("linktree_headers").select("title,bio").eq("linktree_id",linktree.id).maybeSingle(),
+  const since = daysAgoIso(7);
+  const [{ data: collections }, products, { data: clicks }] = await Promise.all([
     supabase.from("shop_collections").select("id,title,position").eq("linktree_id",linktree.id).order("position"),
-    supabase.from("products").select("id,collection_id,platform,title,url,price,image_url,is_active").eq("linktree_id",linktree.id).order("position"),
-    supabase.from("link_collections").select("id,title").eq("linktree_id",linktree.id).order("position"),
-    supabase.from("links").select("id,collection_id,title,platform,is_active").eq("linktree_id",linktree.id).order("position"),
+    fetchProducts(supabase, linktree.id),
+    // Tabel dari SQL 018; kalau belum ada hasilnya kosong.
+    supabase.from("product_clicks").select("product_id,platform").eq("linktree_id",linktree.id).gte("created_at",since).limit(20000),
   ]);
   const query=await searchParams;
-  return <>{query.error?<p className="notice error workspace-notice">{query.error}</p>:null}<ShopWorkspace locale={locale} key={(collections??[]).map((item)=>item.id).join(":")} initialCollections={collections??[]} products={products??[]} linkCollections={linkCollections??[]} links={links??[]} profile={{name:header?.title||profile?.name||"Linktree",slug:profile?.slug??null,bio:header?.bio??profile?.bio??"",avatar_url:profile?.avatar_url??null,background_color:profile?.background_color||"#FFF1E6",text_color:profile?.text_color||"#3D2C2A",button_color:profile?.button_color||"#FFB4A2"}}/></>;
+  const byProduct: Record<string, number> = {}; const byPlatform: Record<string, number> = {};
+  for (const click of clicks ?? []) { byProduct[click.product_id] = (byProduct[click.product_id] ?? 0) + 1; byPlatform[click.platform] = (byPlatform[click.platform] ?? 0) + 1; }
+  return <ProductsWorkspace key={`${products.length}:${(collections??[]).length}`} slug={linktree.slug} error={query.error} message={query.message} collections={collections??[]} products={products} clicksByProduct={byProduct} clicksByPlatform={byPlatform} statsReady={clicks !== null}/>;
 }

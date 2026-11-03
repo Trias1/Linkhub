@@ -1,0 +1,104 @@
+/* Dashboard Produk (UI baru). Variabel warna dari ui.css. */
+
+/* Gaya global lama membuat semua tombol naik saat hover; dimatikan supaya tidak terasa seperti template. */
+button:hover, .button-link:hover, .nav-cta:hover, .public-links a:hover, .public-products a:hover { transform: none; }
+
+.lh-dash { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; align-items: start; padding: 24px 0 40px; color: var(--lh-ink); }
+.lh-dash :where(button:not(.lh-btn)) { padding: 0; border: 0; border-radius: 0; background: none; color: inherit; font-weight: inherit; }
+.lh-dash .lh-btn { font-size: .9rem; }
+.lh-dash .lh-btn.small { font-size: .85rem; }
+.lh-danger { color: var(--lh-danger) !important; }
+.lh-dash-top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+.lh-dash-top h1 { margin: 0; font-size: 1.5rem; letter-spacing: -.02em; }
+.lh-dash-top p { margin: .15rem 0 0; color: var(--lh-muted); font-size: .9rem; }
+.lh-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.lh-stats div { padding: 12px 14px; border: 1px solid var(--lh-line); border-radius: var(--lh-r-md); background: var(--lh-surface); }
+.lh-stats small { color: var(--lh-muted); font-weight: 600; font-size: .78rem; }
+.lh-stats b { display: block; font-size: 1.4rem; letter-spacing: -.02em; }
+.lh-box { padding: 16px; border: 1px solid var(--lh-line); border-radius: var(--lh-r-lg); background: var(--lh-surface); }
+.lh-box + .lh-box { margin-top: 14px; }
+.lh-box h2 { margin: 0 0 .7rem; font-size: 1rem; }
+.lh-hint { margin: 0; }
+.lh-center { text-align: center; }
+.lh-empty-box { display: grid; gap: .7rem; justify-items: start; color: var(--lh-muted); }
+.lh-empty-box p { margin: 0; }
+
+.lh-product-form { display: grid; gap: .2rem; }
+.lh-paste { display: flex; align-items: end; gap: .5rem; }
+.lh-paste .lh-field { flex: 1; min-width: 0; }
+.lh-detect { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; min-height: 24px; margin: .35rem 0 0; color: var(--lh-muted); font-size: .85rem; }
+.lh-detect i, .lh-item-main i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.lh-form-grid { display: grid; grid-template-columns: 104px minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-top: 10px; padding-top: 14px; border-top: 1px dashed var(--lh-line); }
+.lh-wide { grid-column: span 2; }
+.lh-photo { position: relative; grid-row: span 3; display: block; cursor: pointer; }
+.lh-photo span { display: grid; place-items: center; aspect-ratio: 1; padding: 6px; border: 1px dashed var(--lh-line-strong); border-radius: var(--lh-r-md); background: var(--lh-surface-2) center / cover no-repeat; color: var(--lh-muted); font-size: .7rem; text-align: center; line-height: 1.35; }
+.lh-photo input { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; opacity: 0; cursor: pointer; }
+.lh-check { display: flex; align-items: center; gap: .55rem; font-weight: 600; font-size: .9rem; }
+.lh-check input { width: 18px; height: 18px; flex: none; padding: 0; margin: 0; accent-color: var(--lh-ink); }
+.lh-form-grid > .lh-check:first-of-type { grid-column: 2; }
+.lh-form-actions { grid-column: 2 / -1; display: flex; gap: .5rem; align-items: center; }
+.lh-form-actions span { flex: 1; }
+
+.lh-bars { display: grid; gap: .55rem; }
+.lh-bar { display: grid; grid-template-columns: 100px minmax(0, 1fr) 44px; align-items: center; gap: .6rem; font-size: .85rem; }
+.lh-bar div { height: 10px; overflow: hidden; border-radius: 5px; background: var(--lh-surface-2); }
+.lh-bar i { display: block; height: 100%; border-radius: 5px; }
+.lh-bar b { text-align: right; }
+
+.lh-list-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; margin-bottom: .4rem; }
+.lh-list-head h2 { margin: 0; }
+.lh-filter { display: flex; flex-wrap: wrap; gap: .35rem; }
+.lh-dash .lh-filter button { height: 28px; padding: 0 .65rem; border-radius: 999px; background: var(--lh-surface-2); font-size: .78rem; font-weight: 650; cursor: pointer; }
+.lh-dash .lh-filter button[aria-pressed="true"] { background: var(--lh-ink); color: #fff; }
+.lh-group h3 { margin: 1rem 0 .2rem; font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--lh-muted); }
+.lh-group h3 span { font-weight: 500; }
+.lh-items { margin: 0; padding: 0; list-style: none; }
+.lh-item { border-top: 1px solid var(--lh-line); }
+.lh-item.pending { opacity: .6; }
+.lh-item-row { display: grid; grid-template-columns: 30px 52px minmax(0, 1fr) 84px 64px 40px; align-items: center; gap: 12px; padding: 10px 0; }
+.lh-item > .lh-product-form { padding: 0 0 14px; }
+.lh-order { display: grid; gap: 2px; }
+.lh-dash .lh-order button { display: grid; place-items: center; width: 28px; height: 22px; border: 1px solid var(--lh-line); border-radius: 6px; background: var(--lh-surface); cursor: pointer; }
+.lh-dash .lh-order button:disabled { opacity: .35; cursor: default; }
+.lh-order svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
+.lh-item-thumb { display: grid; place-items: center; width: 52px; aspect-ratio: 1; border-radius: 10px; background: var(--lh-surface-2) center / cover no-repeat; color: var(--lh-muted); }
+.lh-dash .lh-item-main { display: grid; min-width: 0; text-align: left; cursor: pointer; }
+.lh-item-main b { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: .92rem; }
+.lh-item-main span { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; margin-top: 2px; color: var(--lh-muted); font-size: .8rem; }
+.lh-status { justify-self: start; padding: .15rem .5rem; border-radius: 6px; font-size: .75rem; font-weight: 700; }
+.lh-status.live { background: #e4f3e7; color: var(--lh-success); }
+.lh-status.scheduled { background: #fdf1d8; color: #7a5200; }
+.lh-status.ended, .lh-status.hidden { background: var(--lh-surface-2); color: var(--lh-muted); }
+.lh-status.promo { background: var(--lh-lime); color: var(--lh-lime-ink); }
+.lh-clicks { text-align: right; font-size: .8rem; color: var(--lh-muted); }
+.lh-clicks b { display: block; color: var(--lh-ink); font-size: 1rem; }
+.lh-dash .lh-switch { position: relative; width: 38px; height: 22px; border-radius: 999px; background: var(--lh-line-strong); cursor: pointer; }
+.lh-switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.lh-dash .lh-switch[aria-checked="true"] { background: var(--lh-ink); }
+.lh-switch[aria-checked="true"]::after { transform: translateX(16px); }
+
+.lh-categories { display: grid; gap: .5rem; margin: .7rem 0; padding: 0; list-style: none; }
+.lh-categories li { display: flex; gap: .5rem; }
+.lh-categories li form:first-child { display: flex; flex: 1; gap: .5rem; min-width: 0; }
+.lh-categories input { flex: 1; min-width: 0; height: 40px; padding: 0 .8rem; border: 1px solid var(--lh-line-strong); border-radius: var(--lh-r-md); font-size: 16px; }
+
+.lh-dash-aside { position: sticky; top: 24px; display: grid; gap: 10px; }
+.lh-phone { width: 300px; height: 600px; margin: 0 auto; overflow: hidden; border: 8px solid var(--lh-ink); border-radius: 36px; background: var(--lh-paper); }
+.lh-phone iframe { width: 375px; height: 750px; border: 0; transform: scale(.757); transform-origin: 0 0; }
+
+@media (max-width: 1150px) { .lh-dash { grid-template-columns: minmax(0, 1fr); } .lh-dash-aside { display: none; } }
+@media (max-width: 700px) {
+  .lh-dash { padding-top: 16px; }
+  .lh-stats { gap: 8px; }
+  .lh-stats div { padding: 10px; }
+  .lh-stats b { font-size: 1.15rem; }
+  .lh-form-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .lh-photo { grid-row: auto; grid-column: span 2; width: 104px; }
+  .lh-wide, .lh-form-actions { grid-column: span 2; }
+  .lh-form-grid > .lh-check:first-of-type { grid-column: auto; }
+  .lh-item-row { grid-template-columns: 28px 48px minmax(0, 1fr) 40px; }
+  .lh-item-thumb { width: 48px; }
+  .lh-item-row .lh-status, .lh-item-row .lh-clicks { display: none; }
+  .lh-bar { grid-template-columns: 82px minmax(0, 1fr) 36px; }
+  .lh-paste { flex-direction: column; align-items: stretch; }
+}

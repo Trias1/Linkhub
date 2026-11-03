@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Bebas_Neue, Caveat, DM_Sans, Geist, Inter, Lora, Merriweather, Montserrat, Nunito, Playfair_Display, Poppins, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import "./ui.css";
+import "./ui-dashboard.css";
 import { getLocale } from "@/lib/i18n-server";
 
 const geist = Geist({ variable: "--font-geist", subsets: ["latin"] });

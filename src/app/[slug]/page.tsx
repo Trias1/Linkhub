@@ -15,8 +15,8 @@ export async function generateMetadata({ params }: { params:Promise<{ slug:strin
   return {title,description,openGraph:{title,description,type:"website"},twitter:{card:"summary_large_image",title,description}};
 }
 
-export default async function PublicProfile({ params }: { params:Promise<{ slug:string }> }) {
-  const { slug }=await params; const supabase=await createClient(); const locale=await getLocale();
+export default async function PublicProfile({ params, searchParams }: { params:Promise<{ slug:string }>; searchParams:Promise<{ preview?:string }> }) {
+  const { slug }=await params; const { preview }=await searchParams; const supabase=await createClient(); const locale=await getLocale();
   const { data:profile }=await supabase.from("linktrees").select("id,name,bio,avatar_url,background_color,text_color,button_color,title_style,title_color,wallpaper_style,button_style,button_roundness,button_text_color,page_font,custom_footer").eq("slug",slug).single();
   if(!profile) notFound();
   const [{data:header},{data:linkCollections},{data:links},{data:shopCollections},products]=await Promise.all([
@@ -30,5 +30,5 @@ export default async function PublicProfile({ params }: { params:Promise<{ slug:
   const visible=liveProducts(products);
   const background=profile.wallpaper_style==="gradient"?`linear-gradient(135deg, ${profile.background_color}, ${profile.button_color})`:profile.wallpaper_style==="soft"?`radial-gradient(circle at top, ${profile.button_color}, ${profile.background_color} 58%)`:profile.background_color;
   const style={background,"--profile-bg":profile.background_color,"--profile-text":profile.text_color,"--profile-button":profile.button_color,"--profile-button-text":profile.button_text_color,"--profile-title":profile.title_color} as React.CSSProperties;
-  return <main className={`lh-profile font-${profile.page_font}`} style={style}><PublicProfileContent locale={locale} profile={{id:profile.id,name:header?.title||profile.name,bio:header?.bio??profile.bio,avatar_url:profile.avatar_url,title_style:profile.title_style,button_style:profile.button_style,button_roundness:profile.button_roundness,custom_footer:profile.custom_footer}} linkCollections={linkCollections??[]} links={links??[]} shopCollections={shopCollections??[]} products={visible.map(({id,collection_id,platform,title,price,image_url,compare_price,is_featured,ends_at})=>({id,collection_id,platform,title,price,image_url,compare_price,is_featured,ends_at}))}/></main>;
+  return <main className={`lh-profile font-${profile.page_font}`} style={style}><PublicProfileContent track={preview!=="1"} locale={locale} profile={{id:profile.id,name:header?.title||profile.name,bio:header?.bio??profile.bio,avatar_url:profile.avatar_url,title_style:profile.title_style,button_style:profile.button_style,button_roundness:profile.button_roundness,custom_footer:profile.custom_footer}} linkCollections={linkCollections??[]} links={links??[]} shopCollections={shopCollections??[]} products={visible.map(({id,collection_id,platform,title,price,image_url,compare_price,is_featured,ends_at})=>({id,collection_id,platform,title,price,image_url,compare_price,is_featured,ends_at}))}/></main>;
 }
