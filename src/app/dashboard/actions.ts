@@ -270,7 +270,7 @@ export async function switchLinktree(formData: FormData) {
   const id = String(formData.get("linktree_id") ?? "");
   const { data } = await supabase.from("linktrees").select("id").eq("id", id).eq("owner_id", user.id).single();
   if (!data) redirect("/dashboard/links?error=Linktree tidak valid");
-  (await cookies()).set("active_linktree_id", id, { httpOnly:true, sameSite:"lax", path:"/", maxAge:31536000 });
+  (await cookies()).set("active_linktree_id", id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 31536000 });
   redirect("/dashboard/links");
 }
 
@@ -279,11 +279,11 @@ export async function createLinktree(formData: FormData) {
   if (linktrees.length >= 3) redirect("/dashboard/new?error=Maksimal 3 Linktree per akun");
   const slug = String(formData.get("slug") ?? "").trim().toLowerCase();
   if (!/^[a-z0-9-]{3,40}$/.test(slug)) redirect("/dashboard/new?error=Slug harus 3-40 karakter");
-  const name = String(formData.get("name") ?? "").trim().slice(0,60);
-  const bio = String(formData.get("bio") ?? "").trim().slice(0,160);
-  const { data, error } = await supabase.from("linktrees").insert({ owner_id:user.id, name, bio, slug }).select("id").single();
+  const name = String(formData.get("name") ?? "").trim().slice(0, 60);
+  const bio = String(formData.get("bio") ?? "").trim().slice(0, 160);
+  const { data, error } = await supabase.from("linktrees").insert({ owner_id: user.id, name, bio, slug }).select("id").single();
   if (error) redirect(`/dashboard/new?error=${encodeURIComponent(error.message)}`);
-  (await cookies()).set("active_linktree_id", data.id, { httpOnly:true, sameSite:"lax", path:"/", maxAge:31536000 });
+  (await cookies()).set("active_linktree_id", data.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 31536000 });
   redirect("/dashboard/links");
 }
 function accountError(message: string): never {
@@ -317,15 +317,15 @@ export async function changePassword(formData: FormData) {
 
 export async function trustCurrentDevice() {
   const { supabase, user } = await authenticatedClient();
-  const { data:aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (aal?.currentLevel !== "aal2") return { error:"Verifikasi MFA diperlukan sebelum mempercayai perangkat" };
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aal?.currentLevel !== "aal2") return { error: "Verifikasi MFA diperlukan sebelum mempercayai perangkat" };
   const token = crypto.randomUUID() + crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-  const { error } = await supabase.from("trusted_devices").insert({ user_id:user.id, token_hash:await hashTrustedToken(token), label:"Browser saat ini", expires_at:expiresAt.toISOString() });
-  if (error) return { error:error.message };
-  (await cookies()).set("trusted_device", token, { httpOnly:true, secure:process.env.NODE_ENV === "production", sameSite:"lax", path:"/", expires:expiresAt });
+  const { error } = await supabase.from("trusted_devices").insert({ user_id: user.id, token_hash: await hashTrustedToken(token), label: "Browser saat ini", expires_at: expiresAt.toISOString() });
+  if (error) return { error: error.message };
+  (await cookies()).set("trusted_device", token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", expires: expiresAt });
   revalidatePath("/dashboard/account");
-  return { error:null };
+  return { error: null };
 }
 
 export async function removeTrustedDevice(formData: FormData) {
@@ -355,13 +355,13 @@ export async function deleteAccount(formData: FormData) {
   const admin = createAdminClient();
   if (!admin) accountError("SUPABASE_SERVICE_ROLE_KEY belum dipasang di server");
   for (const bucket of ["profile-images", "product-images"]) {
-    for (let offset=0;;offset+=1000) {
-      const { data,error:listError } = await admin.storage.from(bucket).list(user.id,{limit:1000,offset});
+    for (let offset = 0; ; offset += 1000) {
+      const { data, error: listError } = await admin.storage.from(bucket).list(user.id, { limit: 1000, offset });
       if (listError) accountError(listError.message);
       if (!data?.length) break;
-      const { error:removeError } = await admin.storage.from(bucket).remove(data.map((item)=>`${user.id}/${item.name}`));
+      const { error: removeError } = await admin.storage.from(bucket).remove(data.map((item) => `${user.id}/${item.name}`));
       if (removeError) accountError(removeError.message);
-      if (data.length<1000) break;
+      if (data.length < 1000) break;
     }
   }
   const { error } = await admin.auth.admin.deleteUser(user.id);
