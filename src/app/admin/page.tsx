@@ -1,13 +1,10 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
+import { getDashboardContext } from "@/lib/active-linktree";
 
 export default async function AdminPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  const { data: me } = await supabase.from("profiles").select("is_admin").eq("id", user.id).single();
-  if (!me?.is_admin) notFound();
+  const { supabase, isAdmin } = await getDashboardContext();
+  if (!isAdmin) notFound();
 
   const [{ count: users }, { count: links }, { count: views }, { count: clicks }, { data: recentUsers }] = await Promise.all([
     supabase.from("profiles").select("id", { count: "exact", head: true }),

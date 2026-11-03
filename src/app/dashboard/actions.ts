@@ -9,6 +9,7 @@ import { themes, type ThemePreset } from "@/lib/themes";
 import { priceDigits } from "@/lib/rupiah";
 import { commercePlatforms } from "@/lib/commerce-platforms";
 import { hashTrustedToken } from "@/lib/trusted-device";
+import { isUuid } from "@/lib/security";
 
 async function authenticatedClient() {
   return getDashboardContext();
@@ -22,16 +23,32 @@ function validUrl(value: FormDataEntryValue | null) {
 
 
 
+// Jenis file ditentukan dari isi (magic bytes), bukan dari File.type yang dikirim browser.
+function imageType(bytes: Uint8Array) {
+  const ascii = (start: number, end: number) => String.fromCharCode(...bytes.slice(start, end));
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return { type: "image/jpeg", extension: "jpg" };
+  if (bytes[0] === 0x89 && ascii(1, 4) === "PNG") return { type: "image/png", extension: "png" };
+  if (ascii(0, 4) === "RIFF" && ascii(8, 12) === "WEBP") return { type: "image/webp", extension: "webp" };
+  return null;
+}
+
 async function uploadProductImage(supabase: Awaited<ReturnType<typeof createClient>>, userId: string, value: FormDataEntryValue | null) {
   if (!(value instanceof File) || value.size === 0) return null;
-  const extensions: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
-  const extension = extensions[value.type];
-  if (!extension || value.size > 5 * 1024 * 1024) redirect("/dashboard/shops?error=Gambar harus JPG, PNG, atau WebP maksimal 5MB");
-  const path = `${userId}/${crypto.randomUUID()}.${extension}`;
-  const { error } = await supabase.storage.from("product-images").upload(path, value, { contentType: value.type, upsert: false });
-  if (error) redirect(`/dashboard/shops?error=${encodeURIComponent(error.message)}`);
+  const image = value.size <= 5 * 1024 * 1024 ? imageType(new Uint8Array(await value.slice(0, 12).arrayBuffer())) : null;
+  if (!image) redirect("/dashboard/shops?error=Gambar harus JPG, PNG, atau WebP maksimal 5MB");
+  const path = `${userId}/${crypto.randomUUID()}.${image.extension}`;
+  const { error } = await supabase.storage.from("product-images").upload(path, value, { contentType: image.type, upsert: false });
+  if (error) redirect(`/dashboard/shops?error=${encodeURIComponent("Gambar gagal diunggah. Coba lagi.")}`);
   return { path, url: supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl };
 }
+// Pesan database mentah tidak ditampilkan ke user.
+function friendlyError(error: { code?: string; message: string }) {
+  if (error.code === "23505") return "Data itu sudah dipakai. Coba nama atau slug lain.";
+  if (error.code === "42501") return "Kamu tidak punya akses untuk mengubah data ini.";
+  if (error.code === "23514") return "Isian tidak valid. Periksa lagi panjang teks atau format link.";
+  return "Gagal menyimpan. Coba lagi beberapa saat lagi.";
+}
+
 function validColor(value: FormDataEntryValue | null) {
   const color = String(value ?? "").toUpperCase();
   if (!/^#[0-9A-F]{6}$/.test(color)) redirect("/dashboard/design?error=Warna tidak valid");
@@ -48,7 +65,7 @@ export async function saveAccount(formData: FormData) {
     catch { redirect("/dashboard/account?error=URL foto harus memakai http atau https"); }
   }
   const { error } = await supabase.from("linktrees").update({ name: String(formData.get("name") ?? "").trim().slice(0, 60), slug, avatar_url: photo || null }).eq("id", linktree.id).eq("owner_id", user.id);
-  if (error) redirect(`/dashboard/account?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/account?error=${encodeURIComponent(friendlyError(error))}`);
   revalidatePath("/dashboard", "layout");
   revalidatePath(`/${slug}`);
   redirect("/dashboard/account?message=Profil disimpan");
@@ -60,7 +77,7 @@ export async function saveTheme(formData: FormData) {
   if (preset !== "custom" && !(preset in themes)) redirect("/dashboard/design?error=Tema tidak valid");
   const colors = preset === "custom" ? { background: validColor(formData.get("background_color")), text: validColor(formData.get("text_color")), button: validColor(formData.get("button_color")) } : themes[preset as keyof typeof themes];
   const { error } = await supabase.from("linktrees").update({ theme_preset: preset, background_color: colors.background, text_color: colors.text, button_color: colors.button }).eq("id", linktree.id).eq("owner_id", user.id);
-  if (error) redirect(`/dashboard/design?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/design?error=${encodeURIComponent(friendlyError(error))}`);
   const { data: profile } = await supabase.from("linktrees").select("slug").eq("id", linktree.id).eq("owner_id", user.id).single();
   if (profile?.slug) revalidatePath(`/${profile.slug}`);
   redirect("/dashboard/design?message=Tema disimpan");
@@ -68,9 +85,14 @@ export async function saveTheme(formData: FormData) {
 
 export async function addLink(formData: FormData) {
   const { supabase, user, linktree } = await authenticatedClient();
+  const collectionId = String(formData.get("collection_id") ?? "") || null;
+  if (collectionId) {
+    const { data: collection } = isUuid(collectionId) ? await supabase.from("link_collections").select("id").eq("id", collectionId).eq("linktree_id", linktree.id).maybeSingle() : { data: null };
+    if (!collection) redirect("/dashboard/links?error=Collection tidak valid");
+  }
   const { count } = await supabase.from("links").select("id", { count: "exact", head: true }).eq("linktree_id", linktree.id);
-  const { error } = await supabase.from("links").insert({ user_id: user.id, linktree_id: linktree.id, collection_id: String(formData.get("collection_id") ?? "") || null, title: String(formData.get("title") ?? "").trim().slice(0, 80), url: validUrl(formData.get("url")), position: count ?? 0 });
-  if (error) redirect(`/dashboard/links?error=${encodeURIComponent(error.message)}`);
+  const { error } = await supabase.from("links").insert({ user_id: user.id, linktree_id: linktree.id, collection_id: collectionId, title: String(formData.get("title") ?? "").trim().slice(0, 80), url: validUrl(formData.get("url")), position: count ?? 0 });
+  if (error) redirect(`/dashboard/links?error=${encodeURIComponent(friendlyError(error))}`);
   revalidatePath("/dashboard/links");
   redirect("/dashboard/links");
 }
@@ -78,7 +100,7 @@ export async function addLink(formData: FormData) {
 export async function updateLink(formData: FormData) {
   const { supabase, linktree } = await authenticatedClient();
   const { error } = await supabase.from("links").update({ title: String(formData.get("title") ?? "").trim().slice(0, 80), url: validUrl(formData.get("url")), is_active: formData.get("is_active") === "on" }).eq("id", String(formData.get("id") ?? "")).eq("linktree_id", linktree.id);
-  if (error) redirect(`/dashboard/links?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/links?error=${encodeURIComponent(friendlyError(error))}`);
   revalidatePath("/dashboard/links");
 }
 
@@ -91,7 +113,7 @@ export async function addCollection() {
   const { supabase, user, linktree } = await authenticatedClient();
   const { count } = await supabase.from("link_collections").select("id", { count: "exact", head: true }).eq("linktree_id", linktree.id);
   const { error } = await supabase.from("link_collections").insert({ user_id: user.id, linktree_id: linktree.id, title: "My Collection", position: count ?? 0 });
-  if (error) redirect(`/dashboard/links?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/links?error=${encodeURIComponent(friendlyError(error))}`);
   revalidatePath("/dashboard/links");
   redirect("/dashboard/links");
 }
@@ -101,7 +123,7 @@ export async function updateCollection(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim().slice(0, 80);
   if (!title) redirect("/dashboard/links?error=Judul collection wajib diisi");
   const { error } = await supabase.from("link_collections").update({ title }).eq("id", String(formData.get("id") ?? "")).eq("linktree_id", linktree.id);
-  if (error) redirect(`/dashboard/links?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/links?error=${encodeURIComponent(friendlyError(error))}`);
   revalidatePath("/dashboard/links");
 }
 
@@ -133,7 +155,7 @@ export async function addPresetLink(formData: FormData) {
   };
   const preset = presets[platform] ?? presets.website;
   const { error } = await supabase.from("links").insert({ user_id: user.id, linktree_id: linktree.id, collection_id: collectionId, platform, title: preset.title, url: preset.url, position: count ?? 0 });
-  if (error) redirect(`/dashboard/links?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/links?error=${encodeURIComponent(friendlyError(error))}`);
   revalidatePath("/dashboard/links");
 }
 
@@ -146,7 +168,7 @@ export async function addShopCollection() {
   const { supabase, user, linktree } = await authenticatedClient();
   const { count } = await supabase.from("shop_collections").select("id", { count: "exact", head: true }).eq("linktree_id", linktree.id);
   const { error } = await supabase.from("shop_collections").insert({ user_id: user.id, linktree_id: linktree.id, title: "My Products", position: count ?? 0 });
-  if (error) redirect(`/dashboard/shops?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/shops?error=${encodeURIComponent(friendlyError(error))}`);
   revalidatePath("/dashboard/shops");
   redirect("/dashboard/shops");
 }
@@ -156,7 +178,7 @@ export async function updateShopCollection(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim().slice(0, 80);
   if (!title) redirect("/dashboard/shops?error=Judul collection wajib diisi");
   const { error } = await supabase.from("shop_collections").update({ title }).eq("id", String(formData.get("id") ?? "")).eq("linktree_id", linktree.id);
-  if (error) redirect(`/dashboard/shops?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/shops?error=${encodeURIComponent(friendlyError(error))}`);
   revalidatePath("/dashboard/shops");
 }
 
@@ -178,7 +200,7 @@ export async function addProduct(formData: FormData) {
   const { error } = await supabase.from("products").insert({ user_id: user.id, linktree_id: linktree.id, collection_id: collectionId, platform: allowedPlatform, title: String(formData.get("title") ?? "").trim().slice(0, 100), url: validUrl(formData.get("url")), price: priceDigits(String(formData.get("price") ?? "")), image_path: image?.path ?? null, image_url: image?.url ?? null, position: count ?? 0 });
   if (error) {
     if (image) await supabase.storage.from("product-images").remove([image.path]);
-    redirect(`/dashboard/shops?error=${encodeURIComponent(error.message)}`);
+    redirect(`/dashboard/shops?error=${encodeURIComponent(friendlyError(error))}`);
   }
   revalidatePath("/dashboard/shops");
   redirect("/dashboard/shops");
@@ -196,7 +218,7 @@ export async function updateProduct(formData: FormData) {
   const { error } = await supabase.from("products").update(changes).eq("id", id).eq("linktree_id", linktree.id);
   if (error) {
     if (image) await supabase.storage.from("product-images").remove([image.path]);
-    redirect(`/dashboard/shops?error=${encodeURIComponent(error.message)}`);
+    redirect(`/dashboard/shops?error=${encodeURIComponent(friendlyError(error))}`);
   }
   if (image && current?.image_path) await supabase.storage.from("product-images").remove([current.image_path]);
   revalidatePath("/dashboard/shops");
@@ -248,7 +270,7 @@ export async function saveCustomDesign(formData: FormData) {
     supabase.from("linktrees").update(changes).eq("id", linktree.id).eq("owner_id", user.id),
     supabase.from("linktree_headers").upsert({ linktree_id: linktree.id, title, bio: String(formData.get("bio") ?? "").trim().slice(0, 160) }),
   ]);
-  if (error || headerError) redirect(`/dashboard/design/customize?error=${encodeURIComponent((error || headerError)?.message || "Gagal menyimpan design")}`);
+  if (error || headerError) redirect(`/dashboard/design/customize?error=${encodeURIComponent(friendlyError((error || headerError)!))}`);
   revalidatePath("/dashboard", "layout");
   if (current?.slug) revalidatePath(`/${current.slug}`);
   redirect("/dashboard/design/customize?message=Design disimpan");
@@ -261,7 +283,7 @@ export async function saveShareSettings(formData: FormData) {
     seo_description: String(formData.get("seo_description") ?? "").trim().slice(0, 160),
     share_image_color: validColor(formData.get("share_image_color")),
   }).eq("id", linktree.id).eq("owner_id", user.id);
-  if (error) redirect(`/dashboard/share?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/share?error=${encodeURIComponent(friendlyError(error))}`);
   if (profile?.slug) revalidatePath(`/${profile.slug}`);
   redirect("/dashboard/share?message=Share settings disimpan");
 }
@@ -282,7 +304,7 @@ export async function createLinktree(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim().slice(0, 60);
   const bio = String(formData.get("bio") ?? "").trim().slice(0, 160);
   const { data, error } = await supabase.from("linktrees").insert({ owner_id: user.id, name, bio, slug }).select("id").single();
-  if (error) redirect(`/dashboard/new?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/dashboard/new?error=${encodeURIComponent(friendlyError(error))}`);
   (await cookies()).set("active_linktree_id", data.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 31536000 });
   redirect("/dashboard/links");
 }
@@ -298,7 +320,7 @@ async function requireSensitiveAuth(supabase: Awaited<ReturnType<typeof createCl
 export async function savePrivacy(formData: FormData) {
   const { supabase, user } = await authenticatedClient();
   const { error } = await supabase.from("profiles").update({ allow_data_sharing: formData.get("allow_data_sharing") === "true" }).eq("id", user.id);
-  if (error) accountError(error.message);
+  if (error) accountError(friendlyError(error));
   revalidatePath("/dashboard/account");
   redirect("/dashboard/account?message=Privacy settings disimpan");
 }
@@ -311,7 +333,7 @@ export async function changePassword(formData: FormData) {
   if (password.length < 8) accountError("Password minimal 8 karakter");
   if (password !== confirmation) accountError("Konfirmasi password tidak sama");
   const { error } = await supabase.auth.updateUser({ password });
-  if (error) accountError(error.message);
+  if (error) accountError(friendlyError(error));
   redirect("/dashboard/account?message=Password berhasil diperbarui");
 }
 
@@ -322,7 +344,7 @@ export async function trustCurrentDevice() {
   const token = crypto.randomUUID() + crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   const { error } = await supabase.from("trusted_devices").insert({ user_id: user.id, token_hash: await hashTrustedToken(token), label: "Browser saat ini", expires_at: expiresAt.toISOString() });
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyError(error) };
   (await cookies()).set("trusted_device", token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", expires: expiresAt });
   revalidatePath("/dashboard/account");
   return { error: null };
@@ -332,17 +354,18 @@ export async function removeTrustedDevice(formData: FormData) {
   const { supabase, user } = await authenticatedClient();
   const id = String(formData.get("device_id") ?? "");
   const { error } = await supabase.from("trusted_devices").delete().eq("id", id).eq("user_id", user.id);
-  if (error) accountError(error.message);
+  if (error) accountError(friendlyError(error));
   (await cookies()).delete("trusted_device");
   revalidatePath("/dashboard/account");
 }
 
 export async function deleteLinktreeAccount(formData: FormData) {
   const { supabase, user, linktree, linktrees } = await authenticatedClient();
+  await requireSensitiveAuth(supabase);
   if (linktrees.length <= 1) accountError("Linktree terakhir tidak dapat dihapus. Hapus akun jika ingin menghapus semuanya.");
   if (String(formData.get("confirmation") ?? "") !== linktree.slug) accountError("Ketik slug Linktree dengan benar untuk menghapus");
   const { error } = await supabase.from("linktrees").delete().eq("id", linktree.id).eq("owner_id", user.id);
-  if (error) accountError(error.message);
+  if (error) accountError(friendlyError(error));
   (await cookies()).delete("active_linktree_id");
   redirect("/dashboard/links");
 }
@@ -357,15 +380,15 @@ export async function deleteAccount(formData: FormData) {
   for (const bucket of ["profile-images", "product-images"]) {
     for (let offset = 0; ; offset += 1000) {
       const { data, error: listError } = await admin.storage.from(bucket).list(user.id, { limit: 1000, offset });
-      if (listError) accountError(listError.message);
+      if (listError) accountError("Gagal menghapus file. Coba lagi.");
       if (!data?.length) break;
       const { error: removeError } = await admin.storage.from(bucket).remove(data.map((item) => `${user.id}/${item.name}`));
-      if (removeError) accountError(removeError.message);
+      if (removeError) accountError("Gagal menghapus file. Coba lagi.");
       if (data.length < 1000) break;
     }
   }
   const { error } = await admin.auth.admin.deleteUser(user.id);
-  if (error) accountError(error.message);
+  if (error) accountError(friendlyError(error));
   const cookieStore = await cookies();
   cookieStore.getAll().forEach((cookie) => cookieStore.delete(cookie.name));
   redirect("/");
