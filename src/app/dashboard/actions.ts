@@ -7,7 +7,7 @@ import { getDashboardContext } from "@/lib/active-linktree";
 import { createClient } from "@/lib/supabase/server";
 import { themes, type ThemePreset } from "@/lib/themes";
 import { priceDigits } from "@/lib/rupiah";
-import { commercePlatforms } from "@/lib/commerce-platforms";
+import { commercePlatforms, detectPlatform, isCommercePlatform } from "@/lib/commerce-platforms";
 import { hashTrustedToken } from "@/lib/trusted-device";
 import { isUuid } from "@/lib/security";
 
@@ -45,6 +45,7 @@ async function uploadProductImage(supabase: Awaited<ReturnType<typeof createClie
 function friendlyError(error: { code?: string; message: string }) {
   if (error.code === "23505") return "Data itu sudah dipakai. Coba nama atau slug lain.";
   if (error.code === "42501") return "Kamu tidak punya akses untuk mengubah data ini.";
+  if (error.code === "PGRST204" || error.code === "42703") return "Database belum diperbarui. Jalankan file SQL terbaru di Supabase.";
   if (error.code === "23514") return "Isian tidak valid. Periksa lagi panjang teks atau format link.";
   return "Gagal menyimpan. Coba lagi beberapa saat lagi.";
 }
@@ -188,39 +189,89 @@ export async function deleteShopCollection(formData: FormData) {
   revalidatePath("/dashboard/shops");
 }
 
+// Tanggal dari <input type="date"> dihitung dalam WIB: tayang mulai 00:00, berakhir setelah 23:59 hari itu.
+function wibDate(value: FormDataEntryValue | null, endOfDay = false) {
+  const text = String(value ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
+  const date = new Date(`${text}T00:00:00+07:00`);
+  if (Number.isNaN(date.getTime())) return null;
+  if (endOfDay) date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString();
+}
+
+function productFields(formData: FormData) {
+  const url = validUrl(formData.get("url"));
+  const chosen = String(formData.get("platform") ?? "auto");
+  const platform = chosen === "auto" ? detectPlatform(url) : chosen === "website" || isCommercePlatform(chosen) ? chosen : "website";
+  const startsAt = wibDate(formData.get("starts_at"));
+  const endsAt = wibDate(formData.get("ends_at"), true);
+  if (startsAt && endsAt && endsAt <= startsAt) redirect("/dashboard/shops?error=Tanggal berakhir harus setelah tanggal tayang");
+  const title = String(formData.get("title") ?? "").trim().slice(0, 100);
+  if (!title) redirect("/dashboard/shops?error=Nama produk wajib diisi");
+  return { platform, title, url, price: priceDigits(String(formData.get("price") ?? "")), compare_price: priceDigits(String(formData.get("compare_price") ?? "")), is_featured: formData.get("is_featured") === "on", starts_at: startsAt, ends_at: endsAt };
+}
+
+async function ownedShopCollection(supabase: Awaited<ReturnType<typeof createClient>>, linktreeId: string, value: FormDataEntryValue | null) {
+  const id = String(value ?? "");
+  const { data } = isUuid(id) ? await supabase.from("shop_collections").select("id").eq("id", id).eq("linktree_id", linktreeId).maybeSingle() : { data: null };
+  if (!data) redirect("/dashboard/shops?error=Kategori tidak valid");
+  return data.id;
+}
+
 export async function addProduct(formData: FormData) {
   const { supabase, user, linktree } = await authenticatedClient();
-  const collectionId = String(formData.get("collection_id") ?? "");
-  const { data: collection } = await supabase.from("shop_collections").select("id").eq("id", collectionId).eq("linktree_id", linktree.id).single();
-  if (!collection) redirect("/dashboard/shops?error=Collection tidak valid");
+  const collectionId = await ownedShopCollection(supabase, linktree.id, formData.get("collection_id"));
+  const fields = productFields(formData);
   const image = await uploadProductImage(supabase, user.id, formData.get("image"));
   const { count } = await supabase.from("products").select("id", { count: "exact", head: true }).eq("collection_id", collectionId);
-  const productPlatform = String(formData.get("platform") ?? "website");
-  const allowedPlatform = productPlatform === "website" || productPlatform in commercePlatforms ? productPlatform : "website";
-  const { error } = await supabase.from("products").insert({ user_id: user.id, linktree_id: linktree.id, collection_id: collectionId, platform: allowedPlatform, title: String(formData.get("title") ?? "").trim().slice(0, 100), url: validUrl(formData.get("url")), price: priceDigits(String(formData.get("price") ?? "")), image_path: image?.path ?? null, image_url: image?.url ?? null, position: count ?? 0 });
+  const { error } = await supabase.from("products").insert({ user_id: user.id, linktree_id: linktree.id, collection_id: collectionId, ...fields, image_path: image?.path ?? null, image_url: image?.url ?? null, position: count ?? 0 });
   if (error) {
     if (image) await supabase.storage.from("product-images").remove([image.path]);
     redirect(`/dashboard/shops?error=${encodeURIComponent(friendlyError(error))}`);
   }
   revalidatePath("/dashboard/shops");
-  redirect("/dashboard/shops");
+  redirect("/dashboard/shops?message=Produk ditambahkan");
 }
 
 export async function updateProduct(formData: FormData) {
   const { supabase, user, linktree } = await authenticatedClient();
   const id = String(formData.get("id") ?? "");
-  const { data: current } = await supabase.from("products").select("image_path").eq("id", id).eq("linktree_id", linktree.id).single();
+  const { data: current } = isUuid(id) ? await supabase.from("products").select("image_path").eq("id", id).eq("linktree_id", linktree.id).maybeSingle() : { data: null };
+  if (!current) redirect("/dashboard/shops?error=Produk tidak ditemukan");
+  const collectionId = await ownedShopCollection(supabase, linktree.id, formData.get("collection_id"));
+  const fields = productFields(formData);
   const image = await uploadProductImage(supabase, user.id, formData.get("image"));
-  const productPlatform = String(formData.get("platform") ?? "website");
-  const allowedPlatform = productPlatform === "website" || productPlatform in commercePlatforms ? productPlatform : "website";
-  const changes: Record<string, string | boolean | null> = { platform: allowedPlatform, title: String(formData.get("title") ?? "").trim().slice(0, 100), url: validUrl(formData.get("url")), price: priceDigits(String(formData.get("price") ?? "")), is_active: formData.get("is_active") === "on" };
+  const changes: Record<string, string | boolean | null> = { ...fields, collection_id: collectionId, is_active: formData.get("is_active") === "on" };
   if (image) { changes.image_path = image.path; changes.image_url = image.url; }
   const { error } = await supabase.from("products").update(changes).eq("id", id).eq("linktree_id", linktree.id);
   if (error) {
     if (image) await supabase.storage.from("product-images").remove([image.path]);
     redirect(`/dashboard/shops?error=${encodeURIComponent(friendlyError(error))}`);
   }
-  if (image && current?.image_path) await supabase.storage.from("product-images").remove([current.image_path]);
+  if (image && current.image_path) await supabase.storage.from("product-images").remove([current.image_path]);
+  revalidatePath("/dashboard/shops");
+  redirect("/dashboard/shops?message=Produk disimpan");
+}
+
+export async function setProductActive(id: string, active: boolean) {
+  const { supabase, linktree } = await authenticatedClient();
+  if (!isUuid(id)) return;
+  await supabase.from("products").update({ is_active: active }).eq("id", id).eq("linktree_id", linktree.id);
+  revalidatePath("/dashboard/shops");
+}
+
+// Naik/turun satu langkah di dalam kategorinya; posisi dinomori ulang supaya tidak ada yang kembar.
+export async function moveProduct(id: string, direction: -1 | 1) {
+  const { supabase, linktree } = await authenticatedClient();
+  if (!isUuid(id)) return;
+  const { data: product } = await supabase.from("products").select("collection_id").eq("id", id).eq("linktree_id", linktree.id).maybeSingle();
+  if (!product) return;
+  const { data: siblings } = await supabase.from("products").select("id").eq("collection_id", product.collection_id).eq("linktree_id", linktree.id).order("position").order("created_at");
+  const order = (siblings ?? []).map((item) => item.id);
+  const from = order.indexOf(id); const to = from + direction;
+  if (from < 0 || to < 0 || to >= order.length) return;
+  [order[from], order[to]] = [order[to], order[from]];
+  await Promise.all(order.map((itemId, position) => supabase.from("products").update({ position }).eq("id", itemId).eq("linktree_id", linktree.id)));
   revalidatePath("/dashboard/shops");
 }
 

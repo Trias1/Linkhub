@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Bebas_Neue, Caveat, DM_Sans, Geist, Inter, Lora, Merriweather, Montserrat, Nunito, Playfair_Display, Poppins, Space_Grotesk } from "next/font/google";
 import "./globals.css";
+import "./ui.css";
+import { getLocale } from "@/lib/i18n-server";
 
 const geist = Geist({ variable: "--font-geist", subsets: ["latin"] });
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
@@ -17,6 +19,7 @@ const caveat = Caveat({ variable: "--font-caveat", subsets: ["latin"] });
 
 export const metadata: Metadata = { title: "LinkHub — Satu link untuk semuanya", description: "Buat halaman bio untuk semua tautan pentingmu." };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="id"><body className={`${geist.variable} ${inter.variable} ${poppins.variable} ${playfair.variable} ${space.variable} ${dmSans.variable} ${lora.variable} ${merriweather.variable} ${nunito.variable} ${montserrat.variable} ${bebasNeue.variable} ${caveat.variable}`}>{children}</body></html>;
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const locale = await getLocale();
+  return <html lang={locale}><body className={`${geist.variable} ${inter.variable} ${poppins.variable} ${playfair.variable} ${space.variable} ${dmSans.variable} ${lora.variable} ${merriweather.variable} ${nunito.variable} ${montserrat.variable} ${bebasNeue.variable} ${caveat.variable}`}>{children}</body></html>;
 }
