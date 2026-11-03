@@ -16,11 +16,11 @@ export default async function AdminPage() {
 
   return (
     <main className="admin-shell">
-      <header className="dashboard-header"><Link className="brand" href="/">LinkHub Admin</Link><Link className="text-link" href="/dashboard">Dashboard user</Link></header>
+      <header className="dashboard-header"><Link className="brand" href="/">LinkHub Admin</Link><Link className="text-link" href="/dashboard">User dashboard</Link></header>
       <section className="admin-stats">
-        <article><span>Total user</span><strong>{users ?? 0}</strong></article><article><span>Total link</span><strong>{links ?? 0}</strong></article><article><span>Page views</span><strong>{views ?? 0}</strong></article><article><span>Link clicks</span><strong>{clicks ?? 0}</strong></article>
+        <article><span>Total users</span><strong>{users ?? 0}</strong></article><article><span>Total links</span><strong>{links ?? 0}</strong></article><article><span>Page views</span><strong>{views ?? 0}</strong></article><article><span>Link clicks</span><strong>{clicks ?? 0}</strong></article>
       </section>
-      <section className="panel"><p className="section-label">20 terbaru</p><h1>User terdaftar</h1><div className="user-table"><div className="user-row user-head"><span>Nama</span><span>Slug</span><span>Bergabung</span></div>{recentUsers?.map((item) => <div className="user-row" key={item.id}><strong>{item.name || "Tanpa nama"}</strong><span>{item.slug ? `/${item.slug}` : "Belum diatur"}</span><time>{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(item.created_at))}</time></div>)}</div></section>
+      <section className="panel"><p className="section-label">Latest 20</p><h1>Registered users</h1><div className="user-table"><div className="user-row user-head"><span>Name</span><span>Slug</span><span>Joined</span></div>{recentUsers?.map((item) => <div className="user-row" key={item.id}><strong>{item.name || "No name"}</strong><span>{item.slug ? `/${item.slug}` : "Not set"}</span><time>{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(item.created_at))}</time></div>)}</div></section>
     </main>
   );
 }

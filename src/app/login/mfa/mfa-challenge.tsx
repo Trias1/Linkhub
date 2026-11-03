@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -15,7 +15,7 @@ export function MfaChallenge({next}:{next:string}){
   const [error,setError]=useState("");
   useEffect(()=>{void (async()=>{const {data}=await createClient().auth.mfa.listFactors();const verified=(data?.all??[]).filter((item)=>item.status==="verified") as Factor[];setFactors(verified);setFactorId(verified[0]?.id??"");})();},[]);
   async function verify(formData:FormData){
-    const factor=factors.find((item)=>item.id===factorId); if(!factor)return setError("MFA factor tidak ditemukan");
+    const factor=factors.find((item)=>item.id===factorId); if(!factor)return setError("MFA factor not found");
     const supabase=createClient(); const code=String(formData.get("code")??"");
     if(factor.factor_type==="phone") { const challenge=await supabase.auth.mfa.challenge({factorId,channel:"sms"}); if(challenge.error)return setError(challenge.error.message); const result=await supabase.auth.mfa.verify({factorId,challengeId:challenge.data.id,code}); if(result.error)return setError(result.error.message); }
     else { const result=await supabase.auth.mfa.challengeAndVerify({factorId,code}); if(result.error)return setError(result.error.message); }

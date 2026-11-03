@@ -1,7 +1,7 @@
 ﻿import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { fetchProducts, productStatus } from "@/lib/products";
+import { fetchProducts, liveProducts } from "@/lib/products";
 import { PublicProfileContent } from "./public-profile-content";
 import { getLocale } from "@/lib/i18n-server";
 
@@ -27,7 +27,7 @@ export default async function PublicProfile({ params }: { params:Promise<{ slug:
     fetchProducts(supabase,profile.id,true),
   ]);
   // Pemilik bisa membaca produk terjadwal lewat RLS, jadi saring juga di sini.
-  const now=Date.now(); const visible=products.filter((item)=>productStatus(item,now)==="live");
+  const visible=liveProducts(products);
   const background=profile.wallpaper_style==="gradient"?`linear-gradient(135deg, ${profile.background_color}, ${profile.button_color})`:profile.wallpaper_style==="soft"?`radial-gradient(circle at top, ${profile.button_color}, ${profile.background_color} 58%)`:profile.background_color;
   const style={background,"--profile-bg":profile.background_color,"--profile-text":profile.text_color,"--profile-button":profile.button_color,"--profile-button-text":profile.button_text_color,"--profile-title":profile.title_color} as React.CSSProperties;
   return <main className={`lh-profile font-${profile.page_font}`} style={style}><PublicProfileContent locale={locale} profile={{id:profile.id,name:header?.title||profile.name,bio:header?.bio??profile.bio,avatar_url:profile.avatar_url,title_style:profile.title_style,button_style:profile.button_style,button_roundness:profile.button_roundness,custom_footer:profile.custom_footer}} linkCollections={linkCollections??[]} links={links??[]} shopCollections={shopCollections??[]} products={visible.map(({id,collection_id,platform,title,price,image_url,compare_price,is_featured,ends_at})=>({id,collection_id,platform,title,price,image_url,compare_price,is_featured,ends_at}))}/></main>;

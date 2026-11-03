@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -35,11 +35,11 @@ export function AccountSecurity({ allowDataSharing, devices, slug, canDeleteLink
     if (!totp) return;
     const { error }=await createClient().auth.mfa.challengeAndVerify({ factorId:totp.id, code:String(formData.get("code")??"") });
     if (error) return setMessage(error.message);
-    setTotp(null); setMessage("Authenticator App berhasil diaktifkan"); await loadFactors();
+    setTotp(null); setMessage("Authenticator app enabled"); await loadFactors();
   }
   async function removeFactor(id:string) {
     const { error }=await createClient().auth.mfa.unenroll({ factorId:id });
-    setMessage(error?.message??"MFA berhasil dinonaktifkan");
+    setMessage(error?.message??"MFA disabled");
     if (!error) await loadFactors();
   }
   async function trustDevice() {
