@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getDashboardContext } from "@/lib/active-linktree";
 
+export const metadata = { title: "Admin · LinkHub" };
+
 export default async function AdminPage() {
   const { supabase, isAdmin } = await getDashboardContext();
   if (!isAdmin) notFound();
