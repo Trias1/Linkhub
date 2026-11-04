@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 // Contoh halaman di bingkai HP: data contoh statis, dirender dengan kelas halaman publik yang asli.
-const stores = [["shopee", "Kirana Official"], ["tokopedia", "kiranastudio"], ["tiktok-shop", "@kirana.studio"], ["facebook", "Marketplace"]];
+const stores = [["shopee", "Zulf Syp Official"], ["tokopedia", "zulfsypstudio"], ["tiktok-shop", "@zulfsyp.studio"], ["facebook", "Marketplace"]];
 const products = [
   { title: "Canvas tote bag with inner zip pocket", price: "Rp79.000", platform: "shopee", icon: "M5 8h14l-1 13H6zM9 8V6a3 3 0 0 1 6 0v2" },
   { title: "Matte lip tint, 4 g, rosewood", price: "Rp45.000", platform: "tokopedia", icon: "M9 3h6v5H9zM7 8h10v13H7z" },
@@ -25,7 +25,7 @@ function Icon({ d, size = 28 }: { d: string; size?: number }) {
 
 function ExamplePage() {
   return <div className="lh-phone"><div className="lh-profile lh-mini font-geist" style={profileVars}><div className="lh-page">
-    <header className="lh-head"><span className="lh-avatar">KS</span><h1>Kirana Studio</h1><p>Hijabs, bags and small everyday things. Tap Buy to order in the store you like.</p></header>
+    <header className="lh-head"><span className="lh-avatar">ZS</span><h1>Zulf Syp Studio</h1><p>Hijabs, bags and small everyday things. Tap Buy to order in the store you like.</p></header>
     <div className="lh-stores">{stores.map(([platform, name]) => <span className="lh-store" key={platform}><span className="lh-mark" style={{ background: platformColor(platform) }}><PlatformIcon platform={platform} size={18} /></span><span><b>{platformLabel(platform)}</b><small>{name}</small></span></span>)}</div>
     <div className="lh-section-title"><h2>On sale</h2></div>
     <div className="lh-featured"><span className="lh-thumb"><Icon d={hijabIcon} size={40} /></span><div>
