@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { needsMfaCode } from "@/lib/active-linktree";
 import { rateLimit, verifyTurnstile } from "@/lib/security";
 import { normalizeSlug, slugProblem } from "@/lib/slug";
 
@@ -16,7 +17,7 @@ function credentials(formData:FormData,errorPath="/login"){
   if(!email||password.length<8) fail(errorPath,"Enter a valid email and a password of at least 8 characters");
   return {email,password};
 }
-export async function login(formData:FormData){await guard(formData,"/login","login",10,900);const supabase=await createClient();const {error}=await supabase.auth.signInWithPassword(credentials(formData));if(error)fail("/login",error.code==="email_not_confirmed"?"Email not confirmed yet. Check your inbox.":"Wrong email or password");const {data:aal}=await supabase.auth.mfa.getAuthenticatorAssuranceLevel();redirect(aal?.nextLevel==="aal2"&&aal.currentLevel!=="aal2"?"/login/mfa":"/dashboard");}
+export async function login(formData:FormData){await guard(formData,"/login","login",10,900);const supabase=await createClient();const {data,error}=await supabase.auth.signInWithPassword(credentials(formData));if(error||!data.user)return fail("/login",error?.code==="email_not_confirmed"?"Email not confirmed yet. Check your inbox.":"Wrong email or password");redirect(await needsMfaCode(supabase,data.user.id)?"/login/mfa":"/dashboard");}
 // Pesan sukses yang sama untuk email baru maupun yang sudah terdaftar, supaya daftar email tidak bisa ditebak.
 export async function signup(formData:FormData){
   await guard(formData,"/signup","signup",5,3600);
