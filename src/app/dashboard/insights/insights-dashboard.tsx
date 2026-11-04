@@ -1,248 +1,68 @@
 import Link from "next/link";
-import { DashboardIcon } from "@/components/dashboard-icon";
-import type { Locale } from "@/lib/i18n";
+import { platformColor, platformLabel } from "@/lib/commerce-platforms";
+import { linkLabel } from "@/lib/link-platform";
 
-type Day = { key: string; label: string; views: number; clicks: number };
-type ClickedLink = { title: string; clicks: number };
+type Day = { key: string; label: string; views: number; clicks: number; buys: number };
+type Ranked = { title: string; platform: string | null; clicks: number };
 type Period = { selected: string; customFrom: string; customTo: string };
 
-export function InsightsDashboard({
-  totals,
-  days,
-  clickedLinks,
-  period,
-  locale,
-}: {
-  locale: Locale;
-  totals: {
-    views: number;
-    clicks: number;
-    lifetimeViews: number;
-    lifetimeClicks: number;
-  };
-  days: Day[];
-  clickedLinks: ClickedLink[];
-  period: Period;
+const ranges = [["1", "Today"], ["7", "7 days"], ["30", "30 days"], ["90", "90 days"]];
+const percent = (part: number, whole: number) => whole ? `${Math.round((part / whole) * 100)}%` : "–";
+
+function RankList({ items, empty, label }: { items: Ranked[]; empty: string; label: (item: Ranked) => string }) {
+  if (!items.length) return <p className="lh-hint">{empty}</p>;
+  const top = items[0].clicks;
+  return <ol className="lh-rank">{items.map((item, index) => <li key={`${item.title}-${index}`}>
+    <span className="lh-rank-name"><b>{item.title}</b><small><i style={{ background: platformColor(item.platform) }} />{label(item)}</small></span>
+    <span className="lh-rank-bar"><i style={{ width: `${Math.max(4, (item.clicks / top) * 100)}%` }} /></span>
+    <b>{item.clicks}</b>
+  </li>)}</ol>;
+}
+
+export function InsightsDashboard({ totals, days, period, topLinks, topProducts, stores, productsReady }: {
+  totals: { views: number; clicks: number; buys: number; lifetimeViews: number; lifetimeClicks: number };
+  days: Day[]; period: Period; topLinks: Ranked[]; topProducts: Ranked[]; stores: [string, number][]; productsReady: boolean;
 }) {
-  const en = locale === "en";
-  const maximum = Math.max(
-    1,
-    ...days.flatMap((day) => [day.views, day.clicks]),
-  );
-  const clickRate = totals.lifetimeViews
-    ? Math.round((totals.lifetimeClicks / totals.lifetimeViews) * 100)
-    : 0;
-  return (
-    <div className="insights-dashboard">
-      <header className="dashboard-topbar">
-        <div>
-          <p className="section-label">
-            {en ? "My Linktree" : "Linktree Saya"}
-          </p>
-          <h1>{en ? "Insights" : "Insight"}</h1>
-        </div>
-      </header>
-      <section
-        className="insight-range"
-        aria-label={en ? "Insight date range" : "Rentang tanggal insight"}
-      >
-        <div className="range-presets">
-          {["1", "7", "30", "90"].map((range) => (
-            <Link
-              className={period.selected === range ? "active" : ""}
-              href={`/dashboard/insights?range=${range}`}
-              key={range}
-            >
-              {range} {en ? (range === "1" ? "day" : "days") : "hari"}
-            </Link>
-          ))}
-        </div>
-        <form>
-          <input name="range" type="hidden" value="custom" />
-          <label>
-            {en ? "From" : "Dari"}
-            <input
-              name="from"
-              type="date"
-              defaultValue={period.customFrom}
-              required
-            />
-          </label>
-          <label>
-            {en ? "To" : "Sampai"}
-            <input
-              name="to"
-              type="date"
-              defaultValue={period.customTo}
-              required
-            />
-          </label>
-          <button>{en ? "Apply" : "Terapkan"}</button>
-        </form>
-        <div className="export-actions">
-          <Link href="/api/export/insights">
-            {en ? "Export insights CSV" : "Ekspor insight CSV"}
-          </Link>
-        </div>
-      </section>
-      <section className="primary-metrics">
-        <article>
-          <span className="metric-icon">
-            <DashboardIcon name="views" />
-          </span>
-          <div>
-            <small>{en ? "Views" : "Tayangan"}</small>
-            <strong>{totals.views}</strong>
-          </div>
-        </article>
-        <article>
-          <span className="metric-icon">
-            <DashboardIcon name="clicks" />
-          </span>
-          <div>
-            <small>{en ? "Clicks" : "Klik"}</small>
-            <strong>{totals.clicks}</strong>
-          </div>
-        </article>
-      </section>
-      <section className="insight-card activity-card">
-        <div className="card-heading">
-          <div>
-            <p className="section-label">{en ? "Activity" : "Aktivitas"}</p>
-            <h2>{en ? "Activity overview" : "Ringkasan aktivitas"}</h2>
-          </div>
-        </div>
-        {days.some((day) => day.views || day.clicks) ? (
-          <div className="activity-chart">
-            {days.map((day) => (
-              <div className="chart-day" key={day.key}>
-                <div className="bars">
-                  <span
-                    className="views-bar"
-                    style={{
-                      height: `${Math.max(4, (day.views / maximum) * 100)}%`,
-                    }}
-                  />
-                  <span
-                    className="clicks-bar"
-                    style={{
-                      height: `${Math.max(4, (day.clicks / maximum) * 100)}%`,
-                    }}
-                  />
-                </div>
-                <small>{day.label}</small>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="insight-empty">
-            <DashboardIcon name="insights" size={28} />
-            <strong>
-              {en
-                ? "No activity during this time"
-                : "Tidak ada aktivitas pada periode ini"}
-            </strong>
-            <p>
-              {en
-                ? "Views and clicks will appear after visitors open your Linktree."
-                : "Tayangan dan klik akan muncul setelah pengunjung membuka Linktree kamu."}
-            </p>
-          </div>
-        )}
-      </section>
-      <div className="insight-columns">
-        <section className="insight-card">
-          <div className="card-heading">
-            <div>
-              <p className="section-label">
-                {en ? "Most clicked links" : "Tautan paling banyak diklik"}
-              </p>
-              <h2>{en ? "Top links" : "Tautan teratas"}</h2>
-            </div>
-          </div>
-          {clickedLinks.length ? (
-            <div className="rank-list">
-              {clickedLinks.map((item, index) => (
-                <div key={item.title}>
-                  <span>{index + 1}</span>
-                  <strong>{item.title}</strong>
-                  <b>{item.clicks}</b>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="insight-empty compact">
-              <DashboardIcon name="clicks" />
-              <strong>
-                {en
-                  ? "No clicks during this time"
-                  : "Tidak ada klik pada periode ini"}
-              </strong>
-            </div>
-          )}
-        </section>
-        <section className="insight-card">
-          <div className="card-heading">
-            <div>
-              <p className="section-label">
-                {en ? "Linktree visitors" : "Pengunjung Linktree"}
-              </p>
-              <h2>{en ? "Visitor activity" : "Aktivitas pengunjung"}</h2>
-            </div>
-          </div>
-          {days.some((day) => day.views) ? (
-            <div className="visitor-list">
-              {days.map((day) => (
-                <div key={day.key}>
-                  <span>{day.label}</span>
-                  <i>
-                    <b
-                      style={{
-                        width: `${Math.max(4, (day.views / maximum) * 100)}%`,
-                      }}
-                    />
-                  </i>
-                  <strong>{day.views}</strong>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="insight-empty compact">
-              <DashboardIcon name="views" />
-              <strong>
-                {en
-                  ? "No activity during this time"
-                  : "Tidak ada aktivitas pada periode ini"}
-              </strong>
-            </div>
-          )}
-        </section>
-      </div>
-      <section className="lifetime-section">
-        <div>
-          <p className="section-label">
-            {en ? "Lifetime totals" : "Total sepanjang waktu"}
-          </p>
-          <h2>{en ? "All-time performance" : "Performa keseluruhan"}</h2>
-        </div>
-        <div className="lifetime-grid">
-          <article>
-            <DashboardIcon name="views" />
-            <span>{en ? "Views" : "Tayangan"}</span>
-            <strong>{totals.lifetimeViews}</strong>
-          </article>
-          <article>
-            <DashboardIcon name="clicks" />
-            <span>{en ? "Clicks" : "Klik"}</span>
-            <strong>{totals.lifetimeClicks}</strong>
-          </article>
-          <article>
-            <DashboardIcon name="rate" />
-            <span>{en ? "Click rate" : "Rasio klik"}</span>
-            <strong>{clickRate}%</strong>
-          </article>
-        </div>
-      </section>
+  const maximum = Math.max(1, ...days.map((day) => Math.max(day.views, day.clicks + day.buys)));
+  const active = days.some((day) => day.views || day.clicks || day.buys);
+  const storeTop = stores[0]?.[1] ?? 1;
+
+  return <div className="lh-page-wrap lh-insights">
+    <header className="lh-dash-top"><div><h1>Insights</h1><p>Who visits your page and what they tap.</p></div><Link className="lh-btn secondary small" href="/api/export/insights" prefetch={false}>Export CSV</Link></header>
+
+    <div className="lh-range">
+      <div className="lh-filter" role="group" aria-label="Date range">{ranges.map(([value, label]) => <Link key={value} href={`/dashboard/insights?range=${value}`} aria-current={period.selected === value && !period.customFrom ? "true" : undefined}>{label}</Link>)}</div>
+      <details className="lh-custom-range" open={Boolean(period.customFrom)}>
+        <summary>{period.customFrom ? `${period.customFrom} to ${period.customTo}` : "Custom range"}</summary>
+        <form><input name="range" type="hidden" value="custom" /><label className="lh-field">From<input name="from" type="date" defaultValue={period.customFrom} required /></label><label className="lh-field">To<input name="to" type="date" defaultValue={period.customTo} required /></label><button className="lh-btn small">Apply</button></form>
+      </details>
     </div>
-  );
+
+    <div className="lh-stats lh-stats-4">
+      <div><small>Visitors</small><b>{totals.views}</b></div>
+      <div><small>Buy clicks</small><b>{productsReady ? totals.buys : "–"}</b></div>
+      <div><small>Link clicks</small><b>{totals.clicks}</b></div>
+      <div><small>Tap rate</small><b>{percent(totals.buys + totals.clicks, totals.views)}</b></div>
+    </div>
+
+    <section className="lh-box">
+      <div className="lh-list-head"><h2>Activity</h2><div className="lh-legend"><span><i className="views" />Visitors</span><span><i className="taps" />Taps (buy + link)</span></div></div>
+      {active ? <div className="lh-chart" style={{ "--days": days.length } as React.CSSProperties} role="img" aria-label={`Visitors and taps per day, ${days[0]?.label} to ${days[days.length - 1]?.label}`}>
+        {days.map((day) => <div className="lh-chart-day" key={day.key} title={`${day.label}: ${day.views} visitors, ${day.buys} buy clicks, ${day.clicks} link clicks`}>
+          <div className="lh-chart-bars"><i className="views" style={{ height: `${(day.views / maximum) * 100}%` }} /><i className="taps" style={{ height: `${((day.clicks + day.buys) / maximum) * 100}%` }} /></div>
+          <small>{day.label}</small>
+        </div>)}
+      </div> : <p className="lh-hint">No visits in this period yet. Share your page link or QR to start seeing activity.</p>}
+      {active ? <details className="lh-table"><summary>Show as table</summary><table><thead><tr><th>Day</th><th>Visitors</th><th>Buy clicks</th><th>Link clicks</th></tr></thead><tbody>{days.map((day) => <tr key={day.key}><td>{day.label}</td><td>{day.views}</td><td>{day.buys}</td><td>{day.clicks}</td></tr>)}</tbody></table></details> : null}
+    </section>
+
+    <div className="lh-two">
+      <section className="lh-box"><h2>Top products</h2>{productsReady ? <RankList items={topProducts} empty="No buy clicks in this period." label={(item) => platformLabel(item.platform)} /> : <p className="lh-hint">Product clicks are not set up yet.</p>}</section>
+      <section className="lh-box"><h2>Top links</h2><RankList items={topLinks} empty="No link clicks in this period." label={(item) => linkLabel(item.platform)} /></section>
+    </div>
+
+    {stores.length ? <section className="lh-box"><h2>Buy clicks by store</h2><div className="lh-bars">{stores.map(([platform, value]) => <div className="lh-bar" key={platform}><span>{platformLabel(platform)}</span><div><i style={{ width: `${Math.max(4, (value / storeTop) * 100)}%`, background: platformColor(platform) }} /></div><b>{value}</b></div>)}</div></section> : null}
+
+    <p className="lh-hint lh-lifetime">All time: <b>{totals.lifetimeViews}</b> visitors · <b>{totals.lifetimeClicks}</b> link clicks</p>
+  </div>;
 }

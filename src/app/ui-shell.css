@@ -81,9 +81,54 @@
 .lh-seo-card figcaption { display: grid; gap: 2px; padding: 10px 12px; background: var(--lh-surface-2); font-size: .85rem; }
 .lh-seo-card figcaption span { color: var(--lh-muted); }
 .lh-seo-card figcaption small { color: var(--lh-muted); font-size: .75rem; text-transform: lowercase; }
+/* Insights */
+.lh-range { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin-bottom: 14px; }
+.lh-range .lh-filter a { display: inline-flex; align-items: center; height: 32px; padding: 0 .8rem; border-radius: 999px; background: var(--lh-surface-2); color: var(--lh-ink); font-size: .82rem; font-weight: 650; text-decoration: none; }
+.lh-range .lh-filter a[aria-current="true"] { background: var(--lh-ink); color: #fff; }
+.lh-custom-range summary { height: 32px; padding: 0 .8rem; border: 1px solid var(--lh-line); border-radius: 999px; font-size: .82rem; font-weight: 650; line-height: 30px; cursor: pointer; list-style: none; }
+.lh-custom-range summary::-webkit-details-marker { display: none; }
+.lh-custom-range form { display: flex; flex-wrap: wrap; align-items: end; gap: .6rem; margin-top: .6rem; }
+.lh-custom-range .lh-field input { height: 40px; }
+.lh-custom-range .lh-btn { min-height: 40px; }
+.lh-stats-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.lh-legend { display: flex; gap: .9rem; color: var(--lh-muted); font-size: .8rem; }
+.lh-legend span { display: inline-flex; align-items: center; gap: .35rem; }
+.lh-legend i { width: 10px; height: 10px; border-radius: 3px; }
+.lh-legend i.views, .lh-chart i.views { background: #c9c8bd; }
+.lh-legend i.taps, .lh-chart i.taps { background: var(--lh-ink); }
+.lh-chart { display: grid; grid-template-columns: repeat(var(--days), minmax(0, 1fr)); gap: 2px; height: 200px; padding-top: 8px; border-bottom: 1px solid var(--lh-line); }
+.lh-chart-day { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-width: 0; }
+.lh-chart-day:hover .lh-chart-bars { background: var(--lh-surface-2); }
+.lh-chart-bars { display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 100%; border-radius: 4px 4px 0 0; }
+.lh-chart-bars i { width: min(14px, 40%); min-height: 2px; border-radius: 4px 4px 0 0; }
+.lh-chart-day small { overflow: hidden; padding-top: 4px; color: var(--lh-muted); font-size: .68rem; text-align: center; white-space: nowrap; }
+.lh-chart:has(.lh-chart-day:nth-child(15)) .lh-chart-day:not(:nth-child(7n+1)) small { visibility: hidden; }
+.lh-chart:has(.lh-chart-day:nth-child(15)) .lh-chart-day small { overflow: visible; text-align: left; }
+.lh-table { margin-top: .7rem; font-size: .85rem; }
+.lh-table summary { color: var(--lh-muted); font-weight: 600; cursor: pointer; }
+.lh-table table { width: 100%; margin-top: .5rem; border-collapse: collapse; }
+.lh-table th, .lh-table td { padding: .35rem .4rem; border-bottom: 1px solid var(--lh-line); text-align: right; }
+.lh-table th:first-child, .lh-table td:first-child { text-align: left; }
+.lh-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+.lh-two .lh-box + .lh-box { margin-top: 0; }
+.lh-two + .lh-box { margin-top: 14px; }
+.lh-rank { display: grid; gap: .6rem; margin: 0; padding: 0; list-style: none; }
+.lh-rank li { display: grid; grid-template-columns: minmax(0, 1fr) 70px 36px; align-items: center; gap: .6rem; }
+.lh-rank-name { display: grid; min-width: 0; }
+.lh-rank-name b { overflow: hidden; font-size: .88rem; text-overflow: ellipsis; white-space: nowrap; }
+.lh-rank-name small { display: flex; align-items: center; gap: .3rem; color: var(--lh-muted); font-size: .76rem; }
+.lh-rank-name i { width: 7px; height: 7px; border-radius: 50%; }
+.lh-rank-bar { height: 8px; overflow: hidden; border-radius: 4px; background: var(--lh-surface-2); }
+.lh-rank-bar i { display: block; height: 100%; border-radius: 4px; background: var(--lh-ink); }
+.lh-rank > li > b { text-align: right; }
+.lh-lifetime { margin-top: 14px; }
+
 @media (max-width: 760px) {
   .lh-page-wrap { padding-top: 16px; }
-  .lh-share-grid, .lh-seo { grid-template-columns: minmax(0, 1fr); }
+  .lh-share-grid, .lh-seo, .lh-two { grid-template-columns: minmax(0, 1fr); }
+  .lh-stats-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lh-chart:has(.lh-chart-day:nth-child(8)) .lh-chart-day:not(:nth-child(7n+1)) small { visibility: hidden; }
+  .lh-chart:has(.lh-chart-day:nth-child(32)) .lh-chart-day small { visibility: hidden; }
 }
 
 @media (max-width: 900px) {
