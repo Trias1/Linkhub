@@ -121,3 +121,8 @@
 .lh-prefix:focus-within { border-color: var(--lh-ink); box-shadow: var(--lh-focus); }
 .lh-prefix > span { padding: 0 .1rem 0 .9rem; color: var(--lh-muted); font-weight: 400; white-space: nowrap; }
 .lh-field .lh-prefix input { height: 100%; padding-left: .1rem; border: 0; border-radius: 0; box-shadow: none; }
+.lh-check-row { display: flex; align-items: center; gap: .55rem; font-size: .9rem; font-weight: 550; }
+.lh-check-row input { width: 18px; height: 18px; margin: 0; accent-color: var(--lh-ink); }
+.lh-auth-alt { margin-top: 1rem; text-align: center; }
+.lh-linkbtn { padding: 0; border: 0; background: none; color: var(--lh-muted); font: inherit; font-size: .88rem; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.lh-linkbtn:hover { color: var(--lh-ink); background: none; }
