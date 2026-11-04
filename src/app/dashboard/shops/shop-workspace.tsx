@@ -30,7 +30,7 @@ function ProductForm({ categories, product, onCancel }: { categories: Category[]
     const result = await fetchProductDetails(link).catch(() => ({ details: null, error: "Could not read the details from this link. Fill them in by hand." }));
     if (lastLookup.current !== link) return;
     if (result.details) { setFilled(result.details); setFillKey((key) => key + 1); setOpen(true); }
-    setLookup({ busy: false, text: result.details ? "Filled in from the link. Check the details before saving." : result.error ?? "" });
+    setLookup({ busy: false, text: !result.details ? result.error ?? "" : result.details.pricesSkipped ? "Name and photo filled in. Enter the price by hand: this store shows LinkHub a different price than buyers see." : "Filled in from the link. Check the details before saving." });
   }
   function changeUrl(value: string) {
     setUrl(value); if (value) setOpen(true);
