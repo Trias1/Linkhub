@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { PlatformIcon } from "@/components/platform-icon";
 import { formatRupiah } from "@/lib/rupiah";
 import { commercePlatforms, detectPlatform, platformColor, platformLabel } from "@/lib/commerce-platforms";
 import { dateInputValue, formatEndDate, formatStartDate, productStatus, type Product, type ProductStatus } from "@/lib/products";
+import type { ProductDetails } from "@/lib/product-details";
 import { RupiahInput } from "./rupiah-input";
-import { addProduct, addShopCollection, deleteProduct, deleteShopCollection, moveProduct, setProductActive, updateProduct, updateShopCollection } from "../actions";
+import { addProduct, addShopCollection, deleteProduct, fetchProductDetails, deleteShopCollection, moveProduct, setProductActive, updateProduct, updateShopCollection } from "../actions";
 
 type Category = { id: string; title: string; position: number };
 const statusLabel: Record<ProductStatus, string> = { live: "Live", scheduled: "Scheduled", ended: "Ended", hidden: "Hidden" };
@@ -17,28 +18,51 @@ function ProductForm({ categories, product, onCancel }: { categories: Category[]
   const [url, setUrl] = useState(product?.url ?? "");
   const detected = url ? detectPlatform(url) : null;
   const [open, setOpen] = useState(Boolean(product));
+  // Isi otomatis dari link: field di-remount (key) supaya nilai baru masuk ke input yang tidak dikontrol.
+  const [filled, setFilled] = useState<ProductDetails | null>(null);
+  const [fillKey, setFillKey] = useState(0);
+  const [lookup, setLookup] = useState<{ busy: boolean; text: string }>({ busy: false, text: "" });
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastLookup = useRef("");
+  async function fillFromLink(link: string) {
+    lastLookup.current = link;
+    setLookup({ busy: true, text: "Reading the product details…" });
+    const result = await fetchProductDetails(link).catch(() => ({ details: null, error: "Could not read the details from this link. Fill them in by hand." }));
+    if (lastLookup.current !== link) return;
+    if (result.details) { setFilled(result.details); setFillKey((key) => key + 1); setOpen(true); }
+    setLookup({ busy: false, text: result.details ? "Filled in from the link. Check the details before saving." : result.error ?? "" });
+  }
+  function changeUrl(value: string) {
+    setUrl(value); if (value) setOpen(true);
+    if (timer.current) clearTimeout(timer.current);
+    const store = /^https:\/\/\S+$/.test(value) ? detectPlatform(value) : "website";
+    // Produk baru: langsung coba isi begitu link toko ditempel.
+    if (!product && store !== "website" && value !== lastLookup.current) timer.current = setTimeout(() => void fillFromLink(value), 500);
+  }
+  const canFill = /^https:\/\/\S+$/.test(url) && detected !== "website";
   return <form action={product ? updateProduct : addProduct} className="lh-product-form">
     {product ? <input type="hidden" name="id" value={product.id} /> : null}
     <div className="lh-paste">
-      <label className="lh-field">{product ? "Product link" : "Paste a product link"}<input name="url" type="url" inputMode="url" required value={url} onChange={(event) => { setUrl(event.target.value); if (event.target.value) setOpen(true); }} placeholder="https://shopee.co.id/..." /></label>
+      <label className="lh-field">{product ? "Product link" : "Paste a product link"}<input name="url" type="url" inputMode="url" required value={url} onChange={(event) => changeUrl(event.target.value)} placeholder="https://shopee.co.id/..." /></label>
       {!open ? <button type="button" className="lh-btn" onClick={() => setOpen(true)}>Continue</button> : null}
     </div>
     <p className="lh-detect" aria-live="polite">{detected ? detected === "website" ? "Other store. The button will say “View product”." : <><i style={{ background: platformColor(detected) }} /><b>{platformLabel(detected)}</b> detected. The button will say &ldquo;Buy on {platformLabel(detected)}&rdquo;.</> : "Supports Shopee, Tokopedia, TikTok Shop, Lazada, Facebook and more."}</p>
+    {canFill ? <p className="lh-fill" aria-live="polite"><span>{lookup.text}</span><button type="button" className="lh-linkbtn" disabled={lookup.busy} onClick={() => void fillFromLink(url)}>{lookup.busy ? "Reading…" : "Fill in from link"}</button></p> : null}
     {open ? <div className="lh-form-grid">
-      <label className="lh-photo">{product?.image_url ? <span style={{ backgroundImage: `url(${product.image_url})` }} /> : <span>Photo<br />JPG, PNG, WebP<br />max 5 MB</span>}<input name="image" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Product photo" /></label>
-      <label className="lh-field lh-wide">Product name<input name="title" required maxLength={100} defaultValue={product?.title} placeholder="e.g. 2-tier rotating spice rack" /></label>
-      <RupiahInput defaultValue={product?.price} />
-      <RupiahInput name="compare_price" label="Original price" hint="Optional, shown crossed out" defaultValue={product?.compare_price} />
+      <label className="lh-photo">{filled?.image || product?.image_url ? <span style={{ backgroundImage: `url(${filled?.image || product?.image_url})` }} /> : <span>Photo<br />JPG, PNG, WebP<br />max 5 MB</span>}<input name="image" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Product photo" />{filled?.image ? <input type="hidden" name="image_source" value={filled.image} /> : null}</label>
+      <label className="lh-field lh-wide">Product name<input key={`title-${fillKey}`} name="title" required maxLength={100} defaultValue={filled?.title || product?.title} placeholder="e.g. 2-tier rotating spice rack" /></label>
+      <RupiahInput key={`price-${fillKey}`} defaultValue={filled?.price || product?.price} />
+      <RupiahInput key={`compare-${fillKey}`} name="compare_price" label="Original price" hint="Optional, shown crossed out" defaultValue={filled ? filled.comparePrice : product?.compare_price} />
       <label className="lh-field">Category<select name="collection_id" defaultValue={product?.collection_id ?? categories[0]?.id}>{categories.map((category) => <option value={category.id} key={category.id}>{category.title}</option>)}</select></label>
       <label className="lh-field">Store<select name="platform" defaultValue={product ? product.platform : "auto"}><option value="auto">Detect from link</option><option value="website">Other / website</option>{Object.entries(commercePlatforms).map(([value, item]) => <option value={value} key={value}>{item.label}</option>)}</select></label>
-      <label className="lh-field">Show from <small>Optional</small><input name="starts_at" type="date" defaultValue={dateInputValue(product?.starts_at ?? null)} /></label>
+      <label className="lh-field lh-from">Show from <small>Optional</small><input name="starts_at" type="date" defaultValue={dateInputValue(product?.starts_at ?? null)} /></label>
       <label className="lh-field">Until <small>Hidden automatically after</small><input name="ends_at" type="date" defaultValue={dateInputValue(product?.ends_at ?? null, true)} /></label>
       <label className="lh-check"><input type="checkbox" name="is_featured" defaultChecked={product?.is_featured} /> Show in &ldquo;On sale&rdquo;</label>
       {product ? <label className="lh-check"><input type="checkbox" name="is_active" defaultChecked={product.is_active} /> Visible on my page</label> : null}
       <div className="lh-form-actions">
         {product ? <button className="lh-btn secondary small lh-danger" formAction={deleteProduct} formNoValidate onClick={(event) => { if (!confirm("Delete this product?")) event.preventDefault(); }}>Delete</button> : null}
         <span />
-        <button type="button" className="lh-btn secondary small" onClick={() => { if (onCancel) onCancel(); else { setOpen(false); setUrl(""); } }}>Cancel</button>
+        <button type="button" className="lh-btn secondary small" onClick={() => { if (onCancel) onCancel(); else { setOpen(false); setUrl(""); setFilled(null); setLookup({ busy: false, text: "" }); lastLookup.current = ""; } }}>Cancel</button>
         <button className="lh-btn small">{product ? "Save" : "Save product"}</button>
       </div>
     </div> : null}

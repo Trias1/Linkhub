@@ -9,7 +9,8 @@ import { priceDigits } from "@/lib/rupiah";
 import { detectPlatform, isCommercePlatform } from "@/lib/commerce-platforms";
 import { linkPlatform } from "@/lib/link-platform";
 import { slugProblem } from "@/lib/slug";
-import { isUuid } from "@/lib/security";
+import { isUuid, rateLimit } from "@/lib/security";
+import { downloadProductImage, readProductDetails, type ProductDetails } from "@/lib/product-details";
 
 async function authenticatedClient() {
   return getDashboardContext();
@@ -41,6 +42,26 @@ async function uploadProductImage(supabase: Awaited<ReturnType<typeof createClie
   if (error) redirect(`/dashboard/shops?error=${encodeURIComponent("Image upload failed. Please try again.")}`);
   return { path, url: supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl };
 }
+// Foto dari link produk (diisi otomatis): diunduh dari CDN marketplace lalu disimpan di storage kita.
+// Kalau gagal, produk tetap tersimpan tanpa foto.
+async function importProductImage(supabase: Awaited<ReturnType<typeof createClient>>, userId: string, value: FormDataEntryValue | null) {
+  if (typeof value !== "string" || !value) return null;
+  const bytes = await downloadProductImage(value);
+  const image = bytes ? imageType(bytes.slice(0, 12)) : null;
+  if (!bytes || !image) return null;
+  const path = `${userId}/${crypto.randomUUID()}.${image.extension}`;
+  const { error } = await supabase.storage.from("product-images").upload(path, bytes, { contentType: image.type, upsert: false });
+  return error ? null : { path, url: supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl };
+}
+
+// Isi form produk dari link marketplace (nama, harga, harga coret, foto).
+export async function fetchProductDetails(url: string): Promise<{ details: ProductDetails | null; error?: string }> {
+  await authenticatedClient();
+  if (!(await rateLimit("product-details", 20, 300))) return { details: null, error: "Too many lookups. Wait a few minutes, or fill the details in by hand." };
+  const details = await readProductDetails(String(url).slice(0, 2048)).catch(() => null);
+  return details ? { details } : { details: null, error: "Could not read the details from this link. Fill them in by hand." };
+}
+
 // Pesan database mentah tidak ditampilkan ke user.
 function friendlyError(error: { code?: string; message: string }) {
   if (error.code === "23505") return "That is already taken. Try another page address.";
@@ -223,7 +244,7 @@ export async function addProduct(formData: FormData) {
   const { supabase, user, linktree } = await authenticatedClient();
   const collectionId = await ownedShopCollection(supabase, linktree.id, formData.get("collection_id"));
   const fields = productFields(formData);
-  const image = await uploadProductImage(supabase, user.id, formData.get("image"));
+  const image = (await uploadProductImage(supabase, user.id, formData.get("image"))) ?? (await importProductImage(supabase, user.id, formData.get("image_source")));
   const { count } = await supabase.from("products").select("id", { count: "exact", head: true }).eq("collection_id", collectionId);
   const { error } = await supabase.from("products").insert({ user_id: user.id, linktree_id: linktree.id, collection_id: collectionId, ...fields, image_path: image?.path ?? null, image_url: image?.url ?? null, position: count ?? 0 });
   if (error) {
@@ -241,7 +262,7 @@ export async function updateProduct(formData: FormData) {
   if (!current) redirect("/dashboard/shops?error=Product not found");
   const collectionId = await ownedShopCollection(supabase, linktree.id, formData.get("collection_id"));
   const fields = productFields(formData);
-  const image = await uploadProductImage(supabase, user.id, formData.get("image"));
+  const image = (await uploadProductImage(supabase, user.id, formData.get("image"))) ?? (await importProductImage(supabase, user.id, formData.get("image_source")));
   const changes: Record<string, string | boolean | null> = { ...fields, collection_id: collectionId, is_active: formData.get("is_active") === "on" };
   if (image) { changes.image_path = image.path; changes.image_url = image.url; }
   const { error } = await supabase.from("products").update(changes).eq("id", id).eq("linktree_id", linktree.id);
