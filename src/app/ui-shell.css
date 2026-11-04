@@ -1,0 +1,103 @@
+/* Kerangka dashboard (sidebar, bar atas HP, menu bawah HP) + penyelarasan halaman dashboard lama. */
+.lh-app { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; background: var(--lh-paper); color: var(--lh-ink); }
+.lh-main { min-width: 0; padding: 0 28px 40px; }
+.lh-brand { font-size: 1.25rem; font-weight: 800; letter-spacing: -.04em; color: var(--lh-ink); text-decoration: none; }
+.lh-brand b { padding: 0 .15em; margin-left: .05em; border-radius: 4px; background: var(--lh-lime); color: var(--lh-lime-ink); }
+
+.lh-side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 1.1rem; height: 100vh; padding: 20px 14px; border-right: 1px solid var(--lh-line); overflow-y: auto; }
+.lh-side > .lh-brand { padding: 0 .55rem; }
+.lh-nav { display: grid; gap: 2px; }
+.lh-nav a { display: flex; align-items: center; gap: .65rem; height: 40px; padding: 0 .7rem; border-radius: var(--lh-r-sm); color: var(--lh-ink-2); font-weight: 550; font-size: .93rem; text-decoration: none; }
+.lh-nav a:hover { background: var(--lh-surface-2); }
+.lh-nav a[aria-current="page"] { background: var(--lh-surface); box-shadow: inset 0 0 0 1px var(--lh-line); color: var(--lh-ink); font-weight: 700; }
+.lh-pagecard { display: grid; gap: .3rem; margin-top: auto; padding: .75rem; border: 1px solid var(--lh-line); border-radius: var(--lh-r-md); background: var(--lh-surface); font-size: .82rem; color: var(--lh-muted); }
+.lh-pagecard b { color: var(--lh-ink); font-size: .88rem; word-break: break-all; }
+.lh-pagecard .lh-btn { margin-top: .35rem; width: 100%; }
+
+.lh-ava { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--lh-ink) center / cover no-repeat; color: #fff; font-weight: 800; font-size: .9rem; }
+.lh-menu { position: relative; }
+.lh-menu summary { display: flex; align-items: center; gap: .6rem; padding: .45rem .55rem; border: 1px solid var(--lh-line); border-radius: var(--lh-r-md); background: var(--lh-surface); cursor: pointer; list-style: none; }
+.lh-menu summary::-webkit-details-marker { display: none; }
+.lh-menu summary > svg { flex: none; color: var(--lh-muted); transition: transform .15s; }
+.lh-menu[open] summary > svg { transform: rotate(180deg); }
+.lh-menu-copy { display: grid; min-width: 0; flex: 1; text-align: left; }
+.lh-menu-copy b { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: .9rem; }
+.lh-menu-copy small { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--lh-muted); font-size: .76rem; }
+.lh-menu-pop { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; right: 0; display: grid; gap: 2px; padding: 6px; border: 1px solid var(--lh-line); border-radius: var(--lh-r-md); background: var(--lh-surface); box-shadow: 0 12px 28px rgb(23 23 18 / 12%); }
+.lh-menu-pop a, .lh-menu-pop button { display: flex; align-items: center; gap: .55rem; width: 100%; min-height: 38px; padding: .35rem .55rem; border: 0; border-radius: var(--lh-r-sm); background: none; color: var(--lh-ink); font: inherit; font-size: .9rem; font-weight: 550; text-align: left; text-decoration: none; cursor: pointer; }
+.lh-menu-pop a:hover, .lh-menu-pop button:hover { background: var(--lh-surface-2); }
+.lh-menu-pop button[aria-current="true"] { background: var(--lh-surface-2); }
+.lh-menu-pop .lh-ava { width: 28px; height: 28px; font-size: .78rem; }
+.lh-menu-label { margin: .35rem .55rem .15rem; overflow: hidden; color: var(--lh-muted); font-size: .72rem; font-weight: 700; text-overflow: ellipsis; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+.lh-menu-note { padding: .35rem .55rem; color: var(--lh-muted); font-size: .8rem; }
+.lh-menu-pop hr { width: 100%; margin: 4px 0; border: 0; border-top: 1px solid var(--lh-line); }
+
+.lh-mtop, .lh-bottomnav { display: none; }
+
+/* Kartu QR (Share & QR) */
+.lh-qr { display: grid; justify-items: center; gap: .7rem; }
+.lh-qr-img { display: block; padding: 6px; border: 1px solid var(--lh-line); border-radius: var(--lh-r-md); background: #fff; }
+.lh-qr-img svg { display: block; width: 100%; height: 100%; }
+.lh-qr-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .4rem; }
+
+/* Halaman dashboard lama: samakan jarak, kartu, dan notifikasi dengan desain baru. */
+.lh-main .dashboard-topbar { min-height: 0; padding: 24px 0 16px; }
+.lh-main .dashboard-topbar h1, .lh-main .builder-heading h1 { margin: 0; font-size: 1.5rem; letter-spacing: -.02em; }
+.lh-main .section-label { color: var(--lh-muted); font-size: .72rem; font-weight: 700; letter-spacing: .08em; }
+.lh-main .back-link { margin-bottom: .4rem; font-size: .85rem; font-weight: 600; color: var(--lh-muted); }
+.lh-main .panel { border-color: var(--lh-line); border-radius: var(--lh-r-lg); padding: 20px; }
+.lh-main .custom-section, .lh-main .insight-card, .lh-main .account-section, .lh-main .primary-metrics article, .lh-main .insight-range { border-color: var(--lh-line); border-radius: var(--lh-r-lg); box-shadow: none; }
+.lh-main .insight-card:hover, .lh-main .primary-metrics article:hover, .lh-main .panel:hover { box-shadow: none; border-color: var(--lh-line); }
+.lh-main .notice { margin: 0 0 1rem; padding: .7rem .85rem; border-radius: var(--lh-r-md); background: #e4f3e7; color: var(--lh-success); font-size: .9rem; font-weight: 550; }
+.lh-main .notice.error { background: #fdecea; color: var(--lh-danger); }
+.lh-main :where(input, select, textarea):not([type="checkbox"], [type="radio"], [type="color"], [type="range"]) { border-color: var(--lh-line-strong); font-size: 16px; }
+.lh-main :where(input, select, textarea):focus { outline: none; border-color: var(--lh-ink); box-shadow: var(--lh-focus); }
+.lh-main .linktree-preview, .lh-main .custom-preview { animation: none; }
+.lh-main :where(button, .button-link):not(.lh-btn) { font-size: .9rem; }
+
+/* Halaman dashboard baru tanpa kolom pratinjau (Share & QR, Links di layar sempit, dst.) */
+.lh-page-wrap { max-width: 980px; padding: 24px 0 40px; color: var(--lh-ink); }
+.lh-page-wrap .lh-btn, .lh-dash .lh-btn { font-size: .9rem; }
+.lh-page-wrap .lh-btn.small, .lh-dash .lh-btn.small { font-size: .85rem; }
+.lh-field textarea { height: auto; min-height: 92px; padding: .7rem .9rem; line-height: 1.45; resize: vertical; }
+.lh-field textarea:focus { outline: none; border-color: var(--lh-ink); box-shadow: var(--lh-focus); }
+.lh-share-grid { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 14px; align-items: start; margin-bottom: 14px; }
+.lh-share-grid .lh-box + .lh-box { margin-top: 0; }
+.lh-share-tools { display: grid; gap: .8rem; }
+.lh-copy { display: flex; gap: .5rem; }
+.lh-copy input { flex: 1; min-width: 0; height: 46px; padding: 0 .9rem; border: 1px solid var(--lh-line-strong); border-radius: var(--lh-r-md); background: var(--lh-surface-2); color: var(--lh-ink); font: inherit; font-size: 16px; }
+.lh-copy .lh-btn { min-height: 46px; }
+.lh-share-row { display: flex; flex-wrap: wrap; gap: .4rem; }
+.lh-qr-box { display: grid; gap: .6rem; }
+.lh-qr-box h2 { margin-bottom: 0; }
+.lh-qr-box .lh-hint { text-align: center; }
+.lh-seo { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+.lh-seo-form { display: grid; gap: 14px; }
+.lh-color input { width: 64px; height: 40px; padding: 2px; }
+.lh-seo-card { margin: 0; overflow: hidden; border: 1px solid var(--lh-line); border-radius: var(--lh-r-md); background: var(--lh-surface); }
+.lh-seo-card > div { display: grid; align-content: space-between; aspect-ratio: 1.91; padding: 16px; color: #fff; }
+.lh-seo-card > div span { font-size: .7rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; opacity: .8; }
+.lh-seo-card > div strong { font-size: 1.35rem; line-height: 1.15; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.lh-seo-card figcaption { display: grid; gap: 2px; padding: 10px 12px; background: var(--lh-surface-2); font-size: .85rem; }
+.lh-seo-card figcaption span { color: var(--lh-muted); }
+.lh-seo-card figcaption small { color: var(--lh-muted); font-size: .75rem; text-transform: lowercase; }
+@media (max-width: 760px) {
+  .lh-page-wrap { padding-top: 16px; }
+  .lh-share-grid, .lh-seo { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 900px) {
+  .lh-app { display: block; }
+  .lh-side { display: none; }
+  .lh-main { padding: 0 16px calc(84px + env(safe-area-inset-bottom)); }
+  .lh-mtop { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 56px; padding: 0 16px; border-bottom: 1px solid var(--lh-line); background: var(--lh-paper); }
+  .lh-mtop .lh-menu summary { padding: .25rem .4rem; border-color: transparent; background: none; }
+  .lh-mtop .lh-menu-copy { display: none; }
+  .lh-mtop .lh-menu-pop { left: auto; right: 0; width: min(280px, calc(100vw - 32px)); }
+  .lh-bottomnav { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); border-top: 1px solid var(--lh-line); background: var(--lh-surface); }
+  .lh-bottomnav a { display: grid; justify-items: center; gap: 2px; padding: 4px 0; color: var(--lh-muted); font-size: .7rem; font-weight: 600; text-decoration: none; }
+  .lh-bottomnav a[aria-current="page"] { color: var(--lh-ink); }
+  .lh-main .dashboard-topbar { padding-top: 16px; }
+  .lh-savebar { bottom: calc(62px + env(safe-area-inset-bottom)); }
+  .lh-main .dashboard-topbar h1, .lh-main .builder-heading h1 { font-size: 1.3rem; }
+}

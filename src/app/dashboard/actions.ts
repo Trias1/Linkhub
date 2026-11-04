@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getDashboardContext } from "@/lib/active-linktree";
 import { createClient } from "@/lib/supabase/server";
-import { themes, type ThemePreset } from "@/lib/themes";
 import { priceDigits } from "@/lib/rupiah";
-import { commercePlatforms, detectPlatform, isCommercePlatform } from "@/lib/commerce-platforms";
+import { detectPlatform, isCommercePlatform } from "@/lib/commerce-platforms";
+import { linkPlatform } from "@/lib/link-platform";
 import { hashTrustedToken } from "@/lib/trusted-device";
 import { isUuid } from "@/lib/security";
 
@@ -72,16 +72,8 @@ export async function saveAccount(formData: FormData) {
   redirect("/dashboard/account?message=Profile saved");
 }
 
-export async function saveTheme(formData: FormData) {
-  const { supabase, user, linktree } = await authenticatedClient();
-  const preset = String(formData.get("theme_preset") ?? "peach") as ThemePreset;
-  if (preset !== "custom" && !(preset in themes)) redirect("/dashboard/design?error=Invalid theme");
-  const colors = preset === "custom" ? { background: validColor(formData.get("background_color")), text: validColor(formData.get("text_color")), button: validColor(formData.get("button_color")) } : themes[preset as keyof typeof themes];
-  const { error } = await supabase.from("linktrees").update({ theme_preset: preset, background_color: colors.background, text_color: colors.text, button_color: colors.button }).eq("id", linktree.id).eq("owner_id", user.id);
-  if (error) redirect(`/dashboard/design?error=${encodeURIComponent(friendlyError(error))}`);
-  const { data: profile } = await supabase.from("linktrees").select("slug").eq("id", linktree.id).eq("owner_id", user.id).single();
-  if (profile?.slug) revalidatePath(`/${profile.slug}`);
-  redirect("/dashboard/design?message=Theme saved");
+function linkUrl(value: FormDataEntryValue | null) {
+  try { return validUrl(value); } catch { redirect("/dashboard/links?error=Enter a full link that starts with https:// (or mailto: for email)"); }
 }
 
 export async function addLink(formData: FormData) {
@@ -89,40 +81,74 @@ export async function addLink(formData: FormData) {
   const collectionId = String(formData.get("collection_id") ?? "") || null;
   if (collectionId) {
     const { data: collection } = isUuid(collectionId) ? await supabase.from("link_collections").select("id").eq("id", collectionId).eq("linktree_id", linktree.id).maybeSingle() : { data: null };
-    if (!collection) redirect("/dashboard/links?error=Invalid collection");
+    if (!collection) redirect("/dashboard/links?error=Invalid group");
   }
+  const title = String(formData.get("title") ?? "").trim().slice(0, 80);
+  if (!title) redirect("/dashboard/links?error=Give the link a title");
+  const url = linkUrl(formData.get("url"));
   const { count } = await supabase.from("links").select("id", { count: "exact", head: true }).eq("linktree_id", linktree.id);
-  const { error } = await supabase.from("links").insert({ user_id: user.id, linktree_id: linktree.id, collection_id: collectionId, title: String(formData.get("title") ?? "").trim().slice(0, 80), url: validUrl(formData.get("url")), position: count ?? 0 });
+  const { error } = await supabase.from("links").insert({ user_id: user.id, linktree_id: linktree.id, collection_id: collectionId, title, url, platform: linkPlatform(url), position: count ?? 0 });
   if (error) redirect(`/dashboard/links?error=${encodeURIComponent(friendlyError(error))}`);
   revalidatePath("/dashboard/links");
-  redirect("/dashboard/links");
+  redirect("/dashboard/links?message=Link added");
 }
 
 export async function updateLink(formData: FormData) {
   const { supabase, linktree } = await authenticatedClient();
-  const { error } = await supabase.from("links").update({ title: String(formData.get("title") ?? "").trim().slice(0, 80), url: validUrl(formData.get("url")), is_active: formData.get("is_active") === "on" }).eq("id", String(formData.get("id") ?? "")).eq("linktree_id", linktree.id);
+  const id = String(formData.get("id") ?? "");
+  const title = String(formData.get("title") ?? "").trim().slice(0, 80);
+  if (!isUuid(id) || !title) redirect("/dashboard/links?error=Give the link a title");
+  const url = linkUrl(formData.get("url"));
+  const { error } = await supabase.from("links").update({ title, url, platform: linkPlatform(url) }).eq("id", id).eq("linktree_id", linktree.id);
   if (error) redirect(`/dashboard/links?error=${encodeURIComponent(friendlyError(error))}`);
+  revalidatePath("/dashboard/links");
+  redirect("/dashboard/links?message=Link saved");
+}
+
+export async function setLinkActive(id: string, active: boolean) {
+  const { supabase, linktree } = await authenticatedClient();
+  if (!isUuid(id)) return;
+  await supabase.from("links").update({ is_active: active }).eq("id", id).eq("linktree_id", linktree.id);
+  revalidatePath("/dashboard/links");
+}
+
+// Naik/turun satu langkah di dalam grupnya (atau di antara link tanpa grup).
+export async function moveLink(id: string, direction: -1 | 1) {
+  const { supabase, linktree } = await authenticatedClient();
+  if (!isUuid(id)) return;
+  const { data: link } = await supabase.from("links").select("collection_id").eq("id", id).eq("linktree_id", linktree.id).maybeSingle();
+  if (!link) return;
+  const siblings = supabase.from("links").select("id").eq("linktree_id", linktree.id);
+  const { data } = await (link.collection_id ? siblings.eq("collection_id", link.collection_id) : siblings.is("collection_id", null)).order("position").order("created_at");
+  const order = (data ?? []).map((item) => item.id);
+  const from = order.indexOf(id); const to = from + direction;
+  if (from < 0 || to < 0 || to >= order.length) return;
+  [order[from], order[to]] = [order[to], order[from]];
+  await Promise.all(order.map((itemId, position) => supabase.from("links").update({ position }).eq("id", itemId).eq("linktree_id", linktree.id)));
   revalidatePath("/dashboard/links");
 }
 
 export async function deleteLink(formData: FormData) {
   const { supabase, linktree } = await authenticatedClient();
-  await supabase.from("links").delete().eq("id", String(formData.get("id") ?? "")).eq("linktree_id", linktree.id);
+  const id = String(formData.get("id") ?? "");
+  if (!isUuid(id)) return;
+  await supabase.from("links").delete().eq("id", id).eq("linktree_id", linktree.id);
   revalidatePath("/dashboard/links");
+  redirect("/dashboard/links?message=Link deleted");
 }
 export async function addCollection() {
   const { supabase, user, linktree } = await authenticatedClient();
   const { count } = await supabase.from("link_collections").select("id", { count: "exact", head: true }).eq("linktree_id", linktree.id);
-  const { error } = await supabase.from("link_collections").insert({ user_id: user.id, linktree_id: linktree.id, title: "My Collection", position: count ?? 0 });
+  const { error } = await supabase.from("link_collections").insert({ user_id: user.id, linktree_id: linktree.id, title: "New group", position: count ?? 0 });
   if (error) redirect(`/dashboard/links?error=${encodeURIComponent(friendlyError(error))}`);
   revalidatePath("/dashboard/links");
-  redirect("/dashboard/links");
+  redirect("/dashboard/links?message=Group added. Rename it below.");
 }
 
 export async function updateCollection(formData: FormData) {
   const { supabase, linktree } = await authenticatedClient();
   const title = String(formData.get("title") ?? "").trim().slice(0, 80);
-  if (!title) redirect("/dashboard/links?error=Collection title is required");
+  if (!title) redirect("/dashboard/links?error=Group name is required");
   const { error } = await supabase.from("link_collections").update({ title }).eq("id", String(formData.get("id") ?? "")).eq("linktree_id", linktree.id);
   if (error) redirect(`/dashboard/links?error=${encodeURIComponent(friendlyError(error))}`);
   revalidatePath("/dashboard/links");
@@ -131,32 +157,6 @@ export async function updateCollection(formData: FormData) {
 export async function deleteCollection(formData: FormData) {
   const { supabase, linktree } = await authenticatedClient();
   await supabase.from("link_collections").delete().eq("id", String(formData.get("id") ?? "")).eq("linktree_id", linktree.id);
-  revalidatePath("/dashboard/links");
-}
-
-export async function addPresetLink(formData: FormData) {
-  const { supabase, user, linktree } = await authenticatedClient();
-  const platform = String(formData.get("platform") ?? "link");
-  const collectionId = String(formData.get("collection_id") ?? "");
-  const [{ data: collection }, { data: existing }, { count }] = await Promise.all([
-    supabase.from("link_collections").select("id").eq("id", collectionId).eq("linktree_id", linktree.id).single(),
-    supabase.from("links").select("id").eq("collection_id", collectionId).eq("platform", platform).maybeSingle(),
-    supabase.from("links").select("id", { count: "exact", head: true }).eq("linktree_id", linktree.id),
-  ]);
-  if (!collection) redirect("/dashboard/links?error=Invalid collection");
-  if (existing) redirect(`/dashboard/links?error=${encodeURIComponent(`${platform} is already in this collection`)}`);
-  const presets: Record<string, { title: string; url: string }> = {
-    instagram: { title: "Instagram", url: "https://instagram.com/" },
-    tiktok: { title: "TikTok", url: "https://tiktok.com/" },
-    youtube: { title: "YouTube", url: "https://youtube.com/" },
-    whatsapp: { title: "WhatsApp", url: "https://wa.me/628123456789" },
-    email: { title: "Email", url: "mailto:username@gmail.com" },
-    website: { title: "Website", url: "https://example.com/" },
-    ...Object.fromEntries(Object.entries(commercePlatforms).map(([key, item]) => [key, { title: item.label, url: item.url }])),
-  };
-  const preset = presets[platform] ?? presets.website;
-  const { error } = await supabase.from("links").insert({ user_id: user.id, linktree_id: linktree.id, collection_id: collectionId, platform, title: preset.title, url: preset.url, position: count ?? 0 });
-  if (error) redirect(`/dashboard/links?error=${encodeURIComponent(friendlyError(error))}`);
   revalidatePath("/dashboard/links");
 }
 
@@ -299,7 +299,7 @@ export async function saveCustomDesign(formData: FormData) {
     page_font: ["geist", "inter", "poppins", "playfair", "space", "dm-sans", "lora", "merriweather", "nunito", "montserrat", "bebas-neue", "caveat"],
   } as const;
   const values = Object.fromEntries(Object.keys(allowed).map((key) => [key, String(formData.get(key) ?? "")]));
-  for (const [key, options] of Object.entries(allowed)) if (!(options as readonly string[]).includes(values[key])) redirect("/dashboard/design/customize?error=Invalid design option");
+  for (const [key, options] of Object.entries(allowed)) if (!(options as readonly string[]).includes(values[key])) redirect("/dashboard/design?error=Invalid design option");
   const { data: current } = await supabase.from("linktrees").select("slug").eq("id", linktree.id).eq("owner_id", user.id).single();
   const changes: Record<string, string> = {
     title_style: values.title_style,
@@ -316,15 +316,15 @@ export async function saveCustomDesign(formData: FormData) {
     theme_preset: "custom",
   };
   const title = String(formData.get("title") ?? "").trim().slice(0, 60);
-  if (!title) redirect("/dashboard/design/customize?error=Title is required");
+  if (!title) redirect("/dashboard/design?error=Title is required");
   const [{ error }, { error: headerError }] = await Promise.all([
     supabase.from("linktrees").update(changes).eq("id", linktree.id).eq("owner_id", user.id),
     supabase.from("linktree_headers").upsert({ linktree_id: linktree.id, title, bio: String(formData.get("bio") ?? "").trim().slice(0, 160) }),
   ]);
-  if (error || headerError) redirect(`/dashboard/design/customize?error=${encodeURIComponent(friendlyError((error || headerError)!))}`);
+  if (error || headerError) redirect(`/dashboard/design?error=${encodeURIComponent(friendlyError((error || headerError)!))}`);
   revalidatePath("/dashboard", "layout");
   if (current?.slug) revalidatePath(`/${current.slug}`);
-  redirect("/dashboard/design/customize?message=Design saved");
+  redirect("/dashboard/design?message=Design saved");
 }
 export async function saveShareSettings(formData: FormData) {
   const { supabase, user, linktree } = await authenticatedClient();
@@ -342,9 +342,9 @@ export async function switchLinktree(formData: FormData) {
   const { user, supabase } = await getDashboardContext();
   const id = String(formData.get("linktree_id") ?? "");
   const { data } = await supabase.from("linktrees").select("id").eq("id", id).eq("owner_id", user.id).single();
-  if (!data) redirect("/dashboard/links?error=Invalid Linktree");
+  if (!data) redirect("/dashboard/shops?error=Invalid page");
   (await cookies()).set("active_linktree_id", id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 31536000 });
-  redirect("/dashboard/links");
+  redirect("/dashboard/shops");
 }
 
 export async function createLinktree(formData: FormData) {
@@ -357,7 +357,7 @@ export async function createLinktree(formData: FormData) {
   const { data, error } = await supabase.from("linktrees").insert({ owner_id: user.id, name, bio, slug }).select("id").single();
   if (error) redirect(`/dashboard/new?error=${encodeURIComponent(friendlyError(error))}`);
   (await cookies()).set("active_linktree_id", data.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 31536000 });
-  redirect("/dashboard/links");
+  redirect("/dashboard/shops");
 }
 function accountError(message: string): never {
   redirect(`/dashboard/account?error=${encodeURIComponent(message)}`);

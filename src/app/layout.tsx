@@ -3,6 +3,7 @@ import { Bebas_Neue, Caveat, DM_Sans, Geist, Inter, Lora, Merriweather, Montserr
 import "./globals.css";
 import "./ui.css";
 import "./ui-dashboard.css";
+import "./ui-shell.css";
 import { getLocale } from "@/lib/i18n-server";
 
 const geist = Geist({ variable: "--font-geist", subsets: ["latin"] });
