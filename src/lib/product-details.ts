@@ -126,7 +126,9 @@ export async function readProductDetails(link: string): Promise<ProductDetails |
   const shopPage = tokopediaShopPage(url);
   let failure: LookupFailure | null = null;
   for (const candidate of shopPage ? [shopPage, url] : [url]) {
-    const result = await readPage(candidate);
+    let result = await readPage(candidate);
+    // Halaman verifikasi anti-bot kadang muncul, kadang tidak: coba sekali lagi setelah jeda singkat.
+    if (result === "blocked") { await new Promise((resolve) => setTimeout(resolve, 1200)); result = await readPage(candidate); }
     if (typeof result !== "string") return result;
     failure ??= result;
   }
@@ -149,7 +151,10 @@ async function readPage(url: URL): Promise<ProductDetails | LookupFailure> {
   const price = pricesSkipped ? "" : rupiahDigits(toped?.[1] ?? meta(html, "product:price:amount") ?? "") || rupiahDigits(offerPrice(ld?.offers)) || rupiahDigits(meta(html, "og:price:amount"));
   const slash = pricesSkipped ? "" : rupiahDigits(toped?.[2] ?? "");
   const comparePrice = slash && price && Number(slash) > Number(price) ? slash : "";
-  const title = cleanTitle(meta(html, "og:title") || ld?.name || html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] || "", url.hostname);
+  const rawTitle = meta(html, "og:title") || ld?.name || html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] || "";
+  // Halaman verifikasi anti-bot ("Security Check", captcha) bukan halaman produk.
+  if (/^\s*(security check|verify|verification|captcha|access denied|just a moment|attention required)/i.test(rawTitle)) return "blocked";
+  const title = cleanTitle(rawTitle, url.hostname);
   const found = [meta(html, "og:image"), firstImage(ld?.image)].find((item) => item && isAllowedImage(item)) ?? "";
   const image = found ? largerImage(html, found) : "";
   if (title || price || image) return { title, price, comparePrice, image, pricesSkipped };
