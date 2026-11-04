@@ -62,7 +62,7 @@ export async function fetchProductDetails(url: string): Promise<{ details: Produ
   if (typeof result !== "string") return { details: result };
   const reasons: Record<LookupFailure, string> = {
     unsupported: "Auto-fill does not work for this link. Fill the details in by hand.",
-    blocked: "The store did not let LinkHub read this page. Fill the details in by hand.",
+    blocked: "The store asked for a security check, so LinkHub could not read this page. Try again in a minute, or fill the details in by hand.",
     unreachable: "Could not reach the store. Try again, or fill the details in by hand.",
     "no-data": "Could not find product details on this page. Fill them in by hand.",
   };
