@@ -73,3 +73,17 @@
   .lh-land-hero .lh-phone { width: 270px; height: 550px; border-width: 7px; border-radius: 34px; }
   .lh-land-hero .lh-phone .lh-mini { transform: scale(.683); }
 }
+
+/* Privacy dan Terms: satu kolom teks yang enak dibaca. */
+.lh-doc { max-width: 680px; padding: 48px 0 64px; font-size: 1rem; line-height: 1.65; }
+.lh-doc h1 { margin: 0; font-size: clamp(1.9rem, 4vw, 2.4rem); letter-spacing: -.03em; }
+.lh-doc-date { margin: .3rem 0 0; color: var(--lh-muted); font-size: .9rem; }
+.lh-doc .lh-doc-intro { margin: 1.4rem 0 0; padding-bottom: 1.4rem; border-bottom: 1px solid var(--lh-line); font-size: 1.08rem; color: var(--lh-ink); }
+.lh-doc h2 { margin: 2rem 0 .5rem; font-size: 1.15rem; letter-spacing: -.01em; }
+.lh-doc p, .lh-doc li { color: var(--lh-ink-2); }
+.lh-doc p { margin: 0 0 .8rem; }
+.lh-doc ul { margin: 0 0 .8rem; padding-left: 1.2rem; }
+.lh-doc li { margin-bottom: .45rem; }
+.lh-doc li b { color: var(--lh-ink); }
+.lh-doc a { color: var(--lh-ink); text-underline-offset: 3px; }
+@media (max-width: 860px) { .lh-doc { padding: 28px 0 44px; } }
