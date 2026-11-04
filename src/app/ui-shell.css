@@ -28,7 +28,7 @@
 .lh-menu-pop a:hover, .lh-menu-pop button:hover { background: var(--lh-surface-2); }
 .lh-menu-pop button[aria-current="true"] { background: var(--lh-surface-2); }
 .lh-menu-pop .lh-ava { width: 28px; height: 28px; font-size: .78rem; }
-.lh-menu-label { margin: .35rem .55rem .15rem; overflow: hidden; color: var(--lh-muted); font-size: .72rem; font-weight: 700; text-overflow: ellipsis; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+.lh-menu-label { margin: .35rem .55rem .15rem; overflow: hidden; color: var(--lh-muted); font-size: .78rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .lh-menu-note { padding: .35rem .55rem; color: var(--lh-muted); font-size: .8rem; }
 .lh-menu-pop hr { width: 100%; margin: 4px 0; border: 0; border-top: 1px solid var(--lh-line); }
 
@@ -43,7 +43,7 @@
 /* Halaman dashboard lama: samakan jarak, kartu, dan notifikasi dengan desain baru. */
 .lh-main .dashboard-topbar { min-height: 0; padding: 24px 0 16px; }
 .lh-main .dashboard-topbar h1, .lh-main .builder-heading h1 { margin: 0; font-size: 1.5rem; letter-spacing: -.02em; }
-.lh-main .section-label { color: var(--lh-muted); font-size: .72rem; font-weight: 700; letter-spacing: .08em; }
+.lh-main .section-label { color: var(--lh-muted); font-size: .82rem; font-weight: 600; letter-spacing: 0; text-transform: none; }
 .lh-main .back-link { margin-bottom: .4rem; font-size: .85rem; font-weight: 600; color: var(--lh-muted); }
 .lh-main .panel { border-color: var(--lh-line); border-radius: var(--lh-r-lg); padding: 20px; }
 .lh-main .custom-section, .lh-main .insight-card, .lh-main .account-section, .lh-main .primary-metrics article, .lh-main .insight-range { border-color: var(--lh-line); border-radius: var(--lh-r-lg); box-shadow: none; }
@@ -76,7 +76,7 @@
 .lh-color input { width: 64px; height: 40px; padding: 2px; }
 .lh-seo-card { margin: 0; overflow: hidden; border: 1px solid var(--lh-line); border-radius: var(--lh-r-md); background: var(--lh-surface); }
 .lh-seo-card > div { display: grid; align-content: space-between; aspect-ratio: 1.91; padding: 16px; color: #fff; }
-.lh-seo-card > div span { font-size: .7rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; opacity: .8; }
+.lh-seo-card > div span { font-size: .78rem; font-weight: 700; opacity: .8; }
 .lh-seo-card > div strong { font-size: 1.35rem; line-height: 1.15; letter-spacing: -.02em; overflow-wrap: anywhere; }
 .lh-seo-card figcaption { display: grid; gap: 2px; padding: 10px 12px; background: var(--lh-surface-2); font-size: .85rem; }
 .lh-seo-card figcaption span { color: var(--lh-muted); }

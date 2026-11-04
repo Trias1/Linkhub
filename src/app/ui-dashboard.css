@@ -50,7 +50,7 @@ button:hover, .button-link:hover, .nav-cta:hover, .public-links a:hover, .public
 .lh-filter { display: flex; flex-wrap: wrap; gap: .35rem; }
 .lh-dash .lh-filter button { height: 28px; padding: 0 .65rem; border-radius: 999px; background: var(--lh-surface-2); font-size: .78rem; font-weight: 650; cursor: pointer; }
 .lh-dash .lh-filter button[aria-pressed="true"] { background: var(--lh-ink); color: #fff; }
-.lh-group h3 { margin: 1rem 0 .2rem; font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--lh-muted); }
+.lh-group h3 { margin: 1rem 0 .2rem; font-size: .88rem; font-weight: 700; color: var(--lh-muted); }
 .lh-group h3 span { font-weight: 500; }
 .lh-items { margin: 0; padding: 0; list-style: none; }
 .lh-item { border-top: 1px solid var(--lh-line); }

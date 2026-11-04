@@ -8,5 +8,5 @@ export const metadata = { title: "Sign in · LinkHub" };
 
 export default async function LoginPage({searchParams}:{searchParams:Promise<{error?:string;message?:string}>}) {
   const query=await searchParams;
-  return <AuthLayout tab="login" title="Welcome back" subtitle="Sign in to manage your products and links." error={query.error} message={query.message}><form action={login} className="lh-form"><input name="website" type="hidden"/><label className="lh-field">Email<input autoComplete="email" name="email" required type="email"/></label><PasswordInput autoComplete="current-password"/><Link className="lh-text-link lh-right" href="/en/forgot-password">Forgot password?</Link><Turnstile locale="en"/><button className="lh-btn">Sign in</button></form></AuthLayout>;
+  return <AuthLayout tab="login" title="Sign in to your page" subtitle="Manage your products, links and promos." error={query.error} message={query.message}><form action={login} className="lh-form"><input name="website" type="hidden"/><label className="lh-field">Email<input autoComplete="email" name="email" required type="email"/></label><PasswordInput autoComplete="current-password"/><Link className="lh-text-link lh-right" href="/en/forgot-password">Forgot password?</Link><Turnstile locale="en"/><button className="lh-btn">Sign in</button></form></AuthLayout>;
 }
