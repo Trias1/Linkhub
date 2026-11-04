@@ -30,6 +30,7 @@ export default function PrivacyPage() {
       <li><b>Supabase</b> stores the database, sign-in and uploaded photos.</li>
       <li><b>Vercel</b> hosts the website.</li>
       <li><b>Cloudflare Turnstile</b> checks that sign-up and sign-in forms are used by a person, not a bot.</li>
+      <li><b>DuckDuckGo</b> provides the small website icons next to links. LinkHub asks for them with the website&rsquo;s domain only; your visitors&rsquo; browsers do not contact DuckDuckGo.</li>
     </ul>
     <p>They process data only to run LinkHub. We do not send your data to advertisers or analytics companies.</p>
 

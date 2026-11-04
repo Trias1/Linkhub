@@ -49,6 +49,9 @@ export function suggestedTitle(value: string) {
   try { return new URL(normalizeLink(value)).hostname.replace(/^www\./, ""); } catch { return ""; }
 }
 
+// Nama domain untuk ikon situs (favicon) link website biasa.
+export const linkDomain = (url: string) => { try { const { protocol, hostname } = new URL(url); return protocol === "https:" || protocol === "http:" ? hostname.replace(/^www\./, "") : null; } catch { return null; } };
+
 // Ikon untuk link lama yang tersimpan tanpa platform (atau sebagai website biasa).
 export const iconPlatform = (link: { platform: string | null; url: string }) => link.platform && link.platform !== "website" ? link.platform : linkPlatform(link.url);
 
