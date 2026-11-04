@@ -3,16 +3,26 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
+// True kalau akun punya MFA tapi sesi ini belum memasukkan kode (belum aal2). Database (SQL 020) memakai aturan yang sama.
+export async function needsMfaCode(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  return aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2";
+}
+
+// Dipakai semua halaman dashboard, server action, export, dan admin: user wajib login, dan kalau MFA aktif
+// sesi harus sudah aal2.
 export const getDashboardContext = cache(async () => {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  const cookieStore = await cookies();
+  if (await needsMfaCode(supabase)) redirect("/login/mfa");
   const [{ data: linktrees }, { data: account }] = await Promise.all([
     supabase.from("linktrees").select("id,name,slug,avatar_url,created_at").eq("owner_id", user.id).order("created_at"),
     supabase.from("profiles").select("is_admin").eq("id", user.id).single(),
   ]);
-  if (!linktrees?.length) redirect("/login?error=Linktree awal belum dibuat");
-  const activeId = (await cookies()).get("active_linktree_id")?.value;
+  if (!linktrees?.length) redirect("/login?error=Your first page has not been created yet");
+  const activeId = cookieStore.get("active_linktree_id")?.value;
   const linktree = linktrees.find((item) => item.id === activeId) ?? linktrees[0];
-  return { supabase, user, linktree, linktrees, isAdmin:Boolean(account?.is_admin) };
+  return { supabase, user, linktree, linktrees, isAdmin: Boolean(account?.is_admin) };
 });

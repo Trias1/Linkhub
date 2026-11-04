@@ -15,7 +15,7 @@ export function insightRange(range: string | undefined, from: string | undefined
 export function insightDays(from: string, to: string) {
   const start = new Date(from); const end = new Date(to); const days=[];
   for (let time=start.getTime(); time<=end.getTime(); time+=DAY_MS) {
-    const date=new Date(time); days.push({ key:date.toISOString().slice(0,10), label:new Intl.DateTimeFormat("id-ID",{day:"numeric",month:"short",timeZone:"UTC"}).format(date), views:0, clicks:0 });
+    const date=new Date(time); days.push({ key:date.toISOString().slice(0,10), label:new Intl.DateTimeFormat("en-GB",{day:"numeric",month:"short",timeZone:"UTC"}).format(date), views:0, clicks:0 });
   }
   return days;
 }

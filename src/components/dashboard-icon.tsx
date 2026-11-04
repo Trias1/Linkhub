@@ -1,4 +1,4 @@
-type Props = { name: "links" | "shop" | "design" | "insights" | "views" | "clicks" | "contacts" | "rate" | "account"; size?: number };
+type Props = { name: "links" | "shop" | "design" | "insights" | "views" | "clicks" | "contacts" | "rate" | "account" | "share" | "external" | "chevron"; size?: number };
 
 export function DashboardIcon({ name, size = 19 }: Props) {
   const props = { width:size, height:size, viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:2, strokeLinecap:"round" as const, strokeLinejoin:"round" as const, "aria-hidden":true };
@@ -12,6 +12,9 @@ export function DashboardIcon({ name, size = 19 }: Props) {
     contacts: <><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 8h5M19.5 5.5v5"/></>,
     rate: <><path d="M4 19 19 4"/><circle cx="7" cy="7" r="3"/><circle cx="17" cy="17" r="3"/></>,
     account: <><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>,
+    share: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></>,
+    external: <><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></>,
+    chevron: <path d="m7 10 5 5 5-5"/>,
   };
   return <svg {...props}>{paths[name]}</svg>;
 }

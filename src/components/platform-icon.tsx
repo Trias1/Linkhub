@@ -1,7 +1,7 @@
 type Props = { platform?: string | null; size?: number };
 
 export function PlatformIcon({ platform, size = 18 }: Props) {
-  const commerceMarks: Record<string, string> = { shopee:"S", tokopedia:"T", lazada:"L", blibli:"B", bukalapak:"Bk", "tiktok-shop":"TS", amazon:"a", ebay:"e", etsy:"E", shopify:"S", woocommerce:"W", gumroad:"G" };
+  const commerceMarks: Record<string, string> = { shopee:"S", tokopedia:"T", lazada:"L", blibli:"B", bukalapak:"Bk", "tiktok-shop":"TS", amazon:"a", ebay:"e", etsy:"E", shopify:"S", woocommerce:"W", gumroad:"G", facebook:"f" };
   const mark = platform ? commerceMarks[platform] : undefined;
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
 
