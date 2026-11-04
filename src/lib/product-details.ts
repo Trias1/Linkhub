@@ -1,0 +1,116 @@
+import "server-only";
+import { commercePlatforms } from "@/lib/commerce-platforms";
+import { priceDigits } from "@/lib/rupiah";
+
+// Ambil nama, harga, harga coret dan foto dari halaman produk marketplace, untuk mengisi form otomatis.
+// Hanya domain marketplace yang dikenal (bukan alamat bebas) supaya server tidak bisa dipakai untuk SSRF.
+export type ProductDetails = { title: string; price: string; comparePrice: string; image: string };
+
+const pageHosts: string[] = Object.values(commercePlatforms).flatMap((platform) => [...platform.hosts]);
+// CDN gambar milik marketplace. Gambar hanya diunduh dari sini saat produk disimpan.
+const imageHosts = ["tokopedia-static.net", "tokopedia.net", "susercontent.com", "slatic.net", "lazcdn.com", "tiktokcdn.com", "ibyteimg.com", "fbcdn.net", "blibli.com", "bukalapak.com", "bukalapak.net", "media-amazon.com", "ebayimg.com", "etsystatic.com", "shopify.com", "gumroad.com"];
+const MAX_PAGE = 3 * 1024 * 1024;
+const MAX_IMAGE = 5 * 1024 * 1024;
+
+const matches = (host: string, list: string[]) => list.some((item) => host === item || host.endsWith(`.${item}`));
+const httpsUrl = (value: string) => { try { const url = new URL(value); return url.protocol === "https:" ? url : null; } catch { return null; } };
+export const isAllowedImage = (value: string) => { const url = httpsUrl(value); return Boolean(url && matches(url.hostname, imageHosts)); };
+
+// Ikuti redirect sendiri (maks. 3), dan setiap lompatan harus tetap ke domain yang diizinkan.
+async function fetchAllowed(start: URL, hosts: string[], accept: string) {
+  let url = start;
+  for (let hop = 0; hop < 4; hop++) {
+    if (!matches(url.hostname, hosts)) return null;
+    const response = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(8000), headers: { accept, "accept-language": "id-ID,id;q=0.9,en;q=0.8", "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36" } }).catch(() => null);
+    if (!response) return null;
+    if (response.status >= 300 && response.status < 400) {
+      const next = response.headers.get("location"); const target = next ? httpsUrl(new URL(next, url).toString()) : null;
+      if (!target) return null; url = target; continue;
+    }
+    return response.ok ? response : null;
+  }
+  return null;
+}
+
+async function readLimited(response: Response, limit: number) {
+  if (Number(response.headers.get("content-length") ?? 0) > limit || !response.body) return null;
+  const reader = response.body.getReader(); const chunks: Uint8Array[] = []; let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > limit) { await reader.cancel(); return null; }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size); let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  return bytes;
+}
+
+const decode = (text: string) => text.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#x2F;/gi, "/");
+function meta(html: string, key: string) {
+  for (const tag of html.match(/<meta\b[^>]*>/gi) ?? []) {
+    const name = tag.match(/\b(?:property|name)\s*=\s*["']([^"']+)["']/i)?.[1];
+    if (name?.toLowerCase() === key) return decode(tag.match(/\bcontent\s*=\s*"([^"]*)"|\bcontent\s*=\s*'([^']*)'/i)?.slice(1).find(Boolean) ?? "");
+  }
+  return "";
+}
+
+type LdProduct = { name?: string; image?: unknown; offers?: unknown };
+function jsonLdProduct(html: string): LdProduct | null {
+  for (const block of html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const queue: unknown[] = [JSON.parse(block[1])];
+      while (queue.length) {
+        const item = queue.shift();
+        if (Array.isArray(item)) { queue.push(...item); continue; }
+        if (!item || typeof item !== "object") continue;
+        const record = item as Record<string, unknown>;
+        const type = record["@type"];
+        if (type === "Product" || (Array.isArray(type) && type.includes("Product"))) return record as LdProduct;
+        if (record["@graph"]) queue.push(record["@graph"]);
+      }
+    } catch { /* JSON-LD rusak: lewati */ }
+  }
+  return null;
+}
+const firstImage = (value: unknown): string => typeof value === "string" ? value : Array.isArray(value) ? firstImage(value[0]) : value && typeof value === "object" ? String((value as { url?: string }).url ?? "") : "";
+const offerPrice = (value: unknown): string => { const offer = Array.isArray(value) ? value[0] : value; if (!offer || typeof offer !== "object") return ""; const record = offer as Record<string, unknown>; return String(record.price ?? record.lowPrice ?? ""); };
+
+// Harga di halaman marketplace bisa "11750000", "11.750.000" atau "11750000.00".
+const rupiahDigits = (value: string) => priceDigits(value.replace(/[.,]\d{2}$/, ""));
+
+function cleanTitle(title: string, host: string) {
+  let clean = title.replace(/\s+/g, " ").trim();
+  if (host.endsWith("tokopedia.com")) clean = clean.replace(/\s*\|\s*Tokopedia$/i, "").replace(/\s+di\s+[^|]+$/i, "");
+  clean = clean.replace(/\s*[|–-]\s*(Shopee|Lazada|TikTok Shop|Blibli|Bukalapak)( Indonesia)?$/i, "");
+  if (clean.length <= 100) return clean;
+  const cut = clean.slice(0, 100); return cut.slice(0, cut.lastIndexOf(" ") > 60 ? cut.lastIndexOf(" ") : 100).trim();
+}
+
+export async function readProductDetails(link: string): Promise<ProductDetails | null> {
+  const url = httpsUrl(link);
+  if (!url) return null;
+  const response = await fetchAllowed(url, pageHosts, "text/html");
+  const bytes = response && (response.headers.get("content-type") ?? "").includes("text/html") ? await readLimited(response, MAX_PAGE) : null;
+  if (!bytes) return null;
+  const html = new TextDecoder().decode(bytes);
+  const ld = jsonLdProduct(html);
+
+  // Tokopedia: blok harga utama berisi harga sekarang dan harga coret (kalau sedang diskon).
+  const toped = html.match(/"value":(\d+),"currency":"[A-Z]*","priceFmt":"[^"]*","slashPriceFmt":"([^"]*)","discPercentage":"[^"]*","__typename":"pdpContentSnapshotPrice"/);
+  const price = rupiahDigits(toped?.[1] ?? meta(html, "product:price:amount") ?? "") || rupiahDigits(offerPrice(ld?.offers)) || rupiahDigits(meta(html, "og:price:amount"));
+  const slash = rupiahDigits(toped?.[2] ?? "");
+  const comparePrice = slash && price && Number(slash) > Number(price) ? slash : "";
+  const title = cleanTitle(meta(html, "og:title") || ld?.name || html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] || "", url.hostname);
+  const image = [meta(html, "og:image"), firstImage(ld?.image)].find((item) => item && isAllowedImage(item)) ?? "";
+  return title || price || image ? { title, price, comparePrice, image } : null;
+}
+
+// Unduh foto dari CDN marketplace untuk disimpan di storage kita (URL CDN sering kedaluwarsa).
+export async function downloadProductImage(link: string) {
+  const url = httpsUrl(link);
+  if (!url || !isAllowedImage(link)) return null;
+  const response = await fetchAllowed(url, imageHosts, "image/jpeg,image/png,image/webp");
+  return response ? readLimited(response, MAX_IMAGE) : null;
+}
