@@ -1,0 +1,75 @@
+/* Landing page (/). Polos dan editorial: garis pemisah, bukan kartu. */
+.lh-landing { min-height: 100vh; background: var(--lh-paper); color: var(--lh-ink); }
+.lh-land-wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+.lh-land-nav { display: flex; align-items: center; justify-content: space-between; height: 64px; border-bottom: 1px solid var(--lh-line); }
+.lh-land-nav nav { display: flex; align-items: center; gap: 1.1rem; font-size: .93rem; }
+.lh-land-nav nav a:not(.lh-btn) { color: var(--lh-ink-2); font-weight: 600; text-decoration: none; }
+
+.lh-land-hero { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 56px; align-items: start; padding-top: 56px; padding-bottom: 64px; }
+.lh-land-hero h1 { margin: 0 0 1rem; max-width: 17ch; font-size: clamp(2rem, 4.4vw, 3.1rem); line-height: 1.08; letter-spacing: -.035em; }
+.lh-land-hero p { margin: 0 0 1rem; max-width: 50ch; font-size: 1.08rem; line-height: 1.6; color: var(--lh-ink-2); }
+.lh-land-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1.1rem; margin-top: 1.6rem; }
+.lh-land-actions .lh-btn { min-height: 48px; padding: 0 1.3rem; font-size: 1rem; }
+.lh-land-actions a:not(.lh-btn) { color: var(--lh-ink); font-weight: 600; }
+.lh-land-hero .lh-land-free { margin-top: 2.2rem; padding-top: 1rem; border-top: 1px solid var(--lh-line); color: var(--lh-muted); font-size: .92rem; }
+.lh-land-hero figure { margin: 0; display: grid; justify-items: center; }
+.lh-land-hero .lh-phone { height: 610px; margin: 0; }
+.lh-land-hero .lh-phone .lh-mini { height: 785px; }
+.lh-land-hero figcaption { margin-top: .6rem; color: var(--lh-muted); font-size: .82rem; text-align: center; }
+
+.lh-land-part { padding: 56px 0; border-top: 1px solid var(--lh-line); }
+.lh-land-part h2 { margin: 0 0 1.6rem; font-size: 1.55rem; letter-spacing: -.025em; }
+.lh-land-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: start; }
+
+.lh-land-how { margin: 0; padding: 0; list-style: none; counter-reset: how; }
+.lh-land-how li { counter-increment: how; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 4px 12px; padding: 14px 0; border-bottom: 1px solid var(--lh-line); }
+.lh-land-how li:first-child { padding-top: 0; }
+.lh-land-how li::before { content: counter(how) "."; grid-row: span 2; color: var(--lh-muted); font-weight: 800; font-size: 1.05rem; }
+.lh-land-how b { font-size: 1.02rem; }
+.lh-land-how span { color: var(--lh-ink-2); }
+
+.lh-land-shot { border: 1px solid var(--lh-line-strong); border-radius: 10px; background: var(--lh-surface); overflow: hidden; font-size: .88rem; }
+.lh-land-shot header { padding: 8px 12px; border-bottom: 1px solid var(--lh-line); background: var(--lh-surface-2); color: var(--lh-muted); font-size: .78rem; }
+.lh-land-shot > div { display: grid; gap: 10px; padding: 14px; }
+.lh-land-in { display: flex; align-items: center; height: 40px; padding: 0 .75rem; border: 1px solid var(--lh-line-strong); border-radius: 8px; white-space: nowrap; overflow: hidden; font-weight: 400; }
+.lh-land-in s { color: var(--lh-muted); }
+.lh-land-det { display: flex; align-items: center; gap: .4rem; color: var(--lh-muted); }
+.lh-land-det i { width: 8px; height: 8px; flex: none; border-radius: 50%; }
+.lh-land-det b { color: var(--lh-ink); }
+.lh-land-label { display: grid; gap: 4px; min-width: 0; font-weight: 600; font-size: .8rem; }
+.lh-land-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+
+.lh-land-get { margin: 0; }
+.lh-land-get > div { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; padding: 20px 0; border-bottom: 1px solid var(--lh-line); }
+.lh-land-get > div:first-child { padding-top: 0; }
+.lh-land-get dt { font-weight: 700; }
+.lh-land-get dd { margin: 0; color: var(--lh-ink-2); }
+.lh-land-get dd p { margin: 0 0 .8rem; max-width: 60ch; }
+.lh-land-bars { display: grid; gap: .45rem; max-width: 420px; }
+.lh-land-bars > div { display: grid; grid-template-columns: 88px minmax(0, 1fr) 34px; gap: .6rem; align-items: center; font-size: .84rem; }
+.lh-land-bars > div > i { height: 8px; border-radius: 4px; background: var(--lh-surface-2); overflow: hidden; }
+.lh-land-bars > div > i > i { display: block; height: 100%; border-radius: 4px; }
+.lh-land-bars b { text-align: right; color: var(--lh-ink); }
+.lh-land-mini { display: inline-grid; grid-template-columns: 56px auto; gap: 10px; align-items: center; padding: 8px 12px 8px 8px; border: 1px solid var(--lh-line-strong); border-radius: 10px; background: var(--lh-surface); font-size: .85rem; --lh-card-line: var(--lh-surface-2); --lh-soft: var(--lh-muted); }
+.lh-land-mini small { color: var(--lh-muted); }
+.lh-land-mini b { color: var(--lh-ink); }
+
+.lh-land-faq { max-width: 720px; }
+.lh-land-faq details { padding: 14px 0; border-bottom: 1px solid var(--lh-line); }
+.lh-land-faq summary { cursor: pointer; font-weight: 650; }
+.lh-land-faq p { margin: .45rem 0 0; color: var(--lh-ink-2); }
+
+.lh-land-foot { padding: 28px 0 40px; border-top: 1px solid var(--lh-line); }
+.lh-land-foot .lh-land-wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
+.lh-land-foot nav { display: flex; flex-wrap: wrap; align-items: center; gap: 1.1rem; font-size: .88rem; }
+.lh-land-foot nav a { color: var(--lh-ink-2); }
+
+@media (max-width: 860px) {
+  .lh-land-hero { grid-template-columns: minmax(0, 1fr); gap: 36px; padding-top: 32px; padding-bottom: 40px; }
+  .lh-land-hero figure { justify-self: center; }
+  .lh-land-split, .lh-land-get > div { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .lh-land-split { gap: 28px; }
+  .lh-land-part { padding: 40px 0; }
+  .lh-land-hero .lh-phone { width: 270px; height: 550px; border-width: 7px; border-radius: 34px; }
+  .lh-land-hero .lh-phone .lh-mini { transform: scale(.683); }
+}

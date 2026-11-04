@@ -4,6 +4,7 @@ import "./globals.css";
 import "./ui.css";
 import "./ui-dashboard.css";
 import "./ui-shell.css";
+import "./ui-landing.css";
 import { getLocale } from "@/lib/i18n-server";
 
 const geist = Geist({ variable: "--font-geist", subsets: ["latin"] });
