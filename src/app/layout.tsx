@@ -20,7 +20,7 @@ const montserrat = Montserrat({ variable: "--font-montserrat", subsets: ["latin"
 const bebasNeue = Bebas_Neue({ variable: "--font-bebas-neue", subsets: ["latin"], weight: "400" });
 const caveat = Caveat({ variable: "--font-caveat", subsets: ["latin"] });
 
-export const metadata: Metadata = { title: "LinkHub — One link for everything", description: "A free link-in-bio page for your stores, products and links." };
+export const metadata: Metadata = { title: "LinkHub", description: "A free shop page for your Shopee, Tokopedia and TikTok Shop products." };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const locale = await getLocale();

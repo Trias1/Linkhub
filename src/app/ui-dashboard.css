@@ -62,9 +62,10 @@ button:hover, .button-link:hover, .nav-cta:hover, .public-links a:hover, .public
 .lh-dash .lh-order button:disabled { opacity: .35; cursor: default; }
 .lh-order svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
 .lh-item-thumb { display: grid; place-items: center; width: 52px; aspect-ratio: 1; border-radius: 10px; background: var(--lh-surface-2) center / cover no-repeat; color: var(--lh-muted); }
-.lh-dash .lh-item-main { display: grid; min-width: 0; text-align: left; cursor: pointer; }
+.lh-dash .lh-item-main { display: grid; text-align: left; cursor: pointer; }
+.lh-item-main { min-width: 0; }
 .lh-item-main b { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: .92rem; }
-.lh-item-main span { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; margin-top: 2px; color: var(--lh-muted); font-size: .8rem; }
+.lh-item-main span { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; min-width: 0; margin-top: 2px; color: var(--lh-muted); font-size: .8rem; overflow-wrap: anywhere; }
 .lh-status { justify-self: start; padding: .15rem .5rem; border-radius: 6px; font-size: .75rem; font-weight: 700; }
 .lh-status.live { background: #e4f3e7; color: var(--lh-success); }
 .lh-status.scheduled { background: #fdf1d8; color: #7a5200; }
