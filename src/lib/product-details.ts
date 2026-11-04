@@ -4,7 +4,8 @@ import { priceDigits } from "@/lib/rupiah";
 
 // Ambil nama, harga, harga coret dan foto dari halaman produk marketplace, untuk mengisi form otomatis.
 // Hanya domain marketplace yang dikenal (bukan alamat bebas) supaya server tidak bisa dipakai untuk SSRF.
-export type ProductDetails = { title: string; price: string; comparePrice: string; image: string };
+// pricesSkipped: halaman memberi harga yang berubah-ubah ke server, jadi harga tidak diisi.
+export type ProductDetails = { title: string; price: string; comparePrice: string; image: string; pricesSkipped: boolean };
 // Alasan gagal, supaya pesan ke user (dan diagnosis di produksi) jelas.
 export type LookupFailure = "unsupported" | "blocked" | "unreachable" | "no-data";
 
@@ -104,15 +105,35 @@ function largerImage(html: string, image: string) {
 
 function cleanTitle(title: string, host: string) {
   let clean = title.replace(/\s+/g, " ").trim();
-  if (host.endsWith("tokopedia.com")) clean = clean.replace(/\s*\|\s*Tokopedia$/i, "").replace(/\s+di\s+[^|]+$/i, "");
+  // "Nama di Toko | Tokopedia": buang nama toko hanya kalau formatnya memang begitu.
+  if (host.endsWith("tokopedia.com") && /\|\s*Tokopedia$/i.test(clean)) clean = clean.replace(/\s*\|\s*Tokopedia$/i, "").replace(/\s+di\s+[^|]+$/i, "");
   clean = clean.replace(/\s*[|–-]\s*(Shopee|Lazada|TikTok Shop|Blibli|Bukalapak)( Indonesia)?$/i, "");
   if (clean.length <= 100) return clean;
   const cut = clean.slice(0, 100); return cut.slice(0, cut.lastIndexOf(" ") > 60 ? cut.lastIndexOf(" ") : 100).trim();
 }
 
+// www.tokopedia.com memblokir server data center (termasuk Vercel), tapi halaman produk yang sama di
+// shop-id.tokopedia.com bisa dibaca. Link www berakhiran "-<id produk>-<id sku>"; pakai id pertama.
+function tokopediaShopPage(url: URL) {
+  if (!matches(url.hostname, ["tokopedia.com"]) || url.hostname === "shop-id.tokopedia.com") return null;
+  const id = url.pathname.match(/-(\d{17,20})(?:-\d{17,20})?\/?$/)?.[1];
+  return id ? new URL(`https://shop-id.tokopedia.com/view/product/${id}?_svg=1&chain_key=%7B%22t%22%3A1%7D`) : null;
+}
+
 export async function readProductDetails(link: string): Promise<ProductDetails | LookupFailure> {
   const url = httpsUrl(link);
   if (!url) return "unsupported";
+  const shopPage = tokopediaShopPage(url);
+  let failure: LookupFailure | null = null;
+  for (const candidate of shopPage ? [shopPage, url] : [url]) {
+    const result = await readPage(candidate);
+    if (typeof result !== "string") return result;
+    failure ??= result;
+  }
+  return failure ?? "no-data";
+}
+
+async function readPage(url: URL): Promise<ProductDetails | LookupFailure> {
   const response = await fetchAllowed(url, pageHosts, "text/html");
   if (typeof response === "string") return response;
   const bytes = (response.headers.get("content-type") ?? "").includes("text/html") ? await readLimited(response, MAX_PAGE) : null;
@@ -122,15 +143,16 @@ export async function readProductDetails(link: string): Promise<ProductDetails |
 
   // Tokopedia: blok harga utama berisi harga sekarang dan harga coret (kalau sedang diskon).
   const toped = html.match(/"value":(\d+),"currency":"[A-Z]*","priceFmt":"[^"]*","slashPriceFmt":"([^"]*)","discPercentage":"[^"]*","__typename":"pdpContentSnapshotPrice"/);
-  // Halaman produk TikTok Shop di shop-id.tokopedia.com (dari link pendek vt.tokopedia.com).
-  const shop = html.match(/"price":\{[^{}]*?"real_price":"([^"]+)","original_price":"([^"]*)"/);
-  const price = rupiahDigits(toped?.[1] ?? shop?.[1] ?? meta(html, "product:price:amount") ?? "") || rupiahDigits(offerPrice(ld?.offers)) || rupiahDigits(meta(html, "og:price:amount"));
-  const slash = rupiahDigits(toped?.[2] ?? shop?.[2] ?? "");
+  // shop-id.tokopedia.com (link pendek vt.tokopedia.com, dan link www yang diarahkan ke sana) memberi harga
+  // yang berbeda di setiap permintaan server (bisa selisih >10%). Daripada salah harga, harga tidak diisi.
+  const pricesSkipped = url.hostname === "shop-id.tokopedia.com";
+  const price = pricesSkipped ? "" : rupiahDigits(toped?.[1] ?? meta(html, "product:price:amount") ?? "") || rupiahDigits(offerPrice(ld?.offers)) || rupiahDigits(meta(html, "og:price:amount"));
+  const slash = pricesSkipped ? "" : rupiahDigits(toped?.[2] ?? "");
   const comparePrice = slash && price && Number(slash) > Number(price) ? slash : "";
   const title = cleanTitle(meta(html, "og:title") || ld?.name || html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] || "", url.hostname);
   const found = [meta(html, "og:image"), firstImage(ld?.image)].find((item) => item && isAllowedImage(item)) ?? "";
   const image = found ? largerImage(html, found) : "";
-  if (title || price || image) return { title, price, comparePrice, image };
+  if (title || price || image) return { title, price, comparePrice, image, pricesSkipped };
   return /captcha|verify you are human|access denied/i.test(html) ? "blocked" : "no-data";
 }
 
