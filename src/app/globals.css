@@ -10,12 +10,13 @@ button { border:1px solid #171712; border-radius:999px; background:#171712; colo
 input,textarea,select { width:100%; border:1px solid #d9d8ce; border-radius:12px; background:#fff; padding:.85rem 1rem; color:#171712; }
 textarea { min-height:100px; resize:vertical; }
 
-/* Tema halaman publik: font, gaya judul, gaya tombol dan sudut (kelas dibentuk dari pilihan di Design). */
+/* Tema halaman publik: font, gaya judul, gaya tombol dan sudut (kelas dibentuk dari pilihan di Design).
+   Solid memakai warna "Button text"; Light dan Outline memakai warna teks halaman karena latarnya tembus. */
 .font-geist { font-family:var(--font-geist),sans-serif; }.font-inter { font-family:var(--font-inter),sans-serif; }.font-poppins { font-family:var(--font-poppins),sans-serif; }.font-playfair { font-family:var(--font-playfair),serif; }.font-space { font-family:var(--font-space),sans-serif; }.font-dm-sans { font-family:var(--font-dm-sans),sans-serif; }.font-lora { font-family:var(--font-lora),serif; }.font-merriweather { font-family:var(--font-merriweather),serif; }.font-nunito { font-family:var(--font-nunito),sans-serif; }.font-montserrat { font-family:var(--font-montserrat),sans-serif; }.font-bebas-neue { font-family:var(--font-bebas-neue),sans-serif; }.font-caveat { font-family:var(--font-caveat),cursive; }
 .title-normal { font-style:normal; text-transform:none; }.title-uppercase { text-transform:uppercase; letter-spacing:.06em; }.title-italic { font-style:italic; }.title-serif { font-family:var(--font-playfair),serif; font-weight:700; }
 .button-solid { background:var(--button-color,var(--profile-button))!important; color:var(--button-text,var(--profile-button-text))!important; }
-.button-glass { background:color-mix(in srgb,var(--button-color,var(--profile-button)),transparent 62%)!important; color:var(--button-text,var(--profile-button-text))!important; border-color:#fff8!important; }
-.button-outline { background:transparent!important; color:var(--button-text,var(--profile-button-text))!important; border:2px solid var(--button-color,var(--profile-button))!important; }
+.button-glass { background:color-mix(in srgb,var(--button-color,var(--profile-button)),transparent 62%)!important; color:var(--profile-text)!important; border-color:color-mix(in srgb,var(--profile-text),transparent 80%)!important; }
+.button-outline { background:transparent!important; color:var(--profile-text)!important; border:2px solid var(--button-color,var(--profile-button))!important; }
 .radius-square { border-radius:0!important; }.radius-soft { border-radius:8px!important; }.radius-rounded { border-radius:16px!important; }.radius-pill { border-radius:999px!important; }
 
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; } }

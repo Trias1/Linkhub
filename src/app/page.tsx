@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PlatformIcon } from "@/components/platform-icon";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { platformColor, platformLabel } from "@/lib/commerce-platforms";
+import { profileStyle } from "@/lib/profile-style";
 
 export const metadata: Metadata = {
   title: "LinkHub — a free shop page for Shopee, Tokopedia and TikTok Shop sellers",
@@ -18,7 +19,7 @@ const products = [
   { title: "Satin scrunchies, set of 6", price: "Rp32.500", platform: "lazada", icon: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" },
 ];
 const hijabIcon = "M12 3c4 0 7 3 7 7v11H5V10c0-4 3-7 7-7z";
-const profileVars = { background: "#F5F4EC", "--profile-bg": "#F5F4EC", "--profile-text": "#171712", "--profile-button": "#171712", "--profile-button-text": "#FFFFFF", "--profile-title": "#171712" } as React.CSSProperties;
+const profileVars = profileStyle({ wallpaper_style: "solid", background_color: "#F5F4EC", text_color: "#171712", button_color: "#171712", button_text_color: "#FFFFFF", title_color: "#171712" });
 
 function Icon({ d, size = 28 }: { d: string; size?: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>;
