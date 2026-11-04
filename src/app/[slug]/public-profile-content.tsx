@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PlatformIcon } from "@/components/platform-icon";
+import { LinkIcon } from "@/components/link-icon";
 import { formatRupiah } from "@/lib/rupiah";
 import { isCommercePlatform, platformColor, platformLabel } from "@/lib/commerce-platforms";
 import { formatEndDate } from "@/lib/products";
 import type { Locale } from "@/lib/i18n";
 
 type LinkCollection = { id: string; title: string };
-type LinkItem = { id: string; collection_id: string | null; title: string; platform: string | null };
+type LinkItem = { id: string; collection_id: string | null; title: string; platform: string | null; domain?: string | null };
 type ShopCollection = { id: string; title: string };
 type Product = { id: string; collection_id: string; platform: string; title: string; price: string; image_url: string | null; compare_price: string; is_featured: boolean; ends_at: string | null };
 type Profile = { id:string; name: string; bio: string; avatar_url: string | null; title_style: string; button_style: string; button_roundness: string; custom_footer: string };
@@ -82,7 +83,7 @@ export function PublicProfileContent({ profile, linkCollections, links, shopColl
       {!shown.length ? <p className="lh-empty">{en ? "No products found. Try another word." : "Produk tidak ditemukan. Coba kata lain atau pilih \"Semua\"."}</p> : null}
     </section> : null}
 
-    {linkGroups.length ? <section className="lh-links" aria-label={en ? "Links" : "Tautan"}>{linkGroups.map((group) => <div className="lh-link-group" key={group.id}>{group.title ? <h2>{group.title}</h2> : null}{group.items.map((item) => <a className={buttonClass} href={`/api/click/${item.id}`} key={item.id} rel="noopener noreferrer" target="_blank"><PlatformIcon platform={item.platform} /><span>{item.title}</span><Arrow /></a>)}</div>)}</section> : null}
+    {linkGroups.length ? <section className="lh-links" aria-label={en ? "Links" : "Tautan"}>{linkGroups.map((group) => <div className="lh-link-group" key={group.id}>{group.title ? <h2>{group.title}</h2> : null}{group.items.map((item) => <a className={buttonClass} href={`/api/click/${item.id}`} key={item.id} rel="noopener noreferrer" target="_blank"><LinkIcon platform={item.platform} domain={item.domain} /><span>{item.title}</span><Arrow /></a>)}</div>)}</section> : null}
 
     {!links.length && !products.length ? <p className="lh-empty">{en ? "Nothing here yet." : "Belum ada isi di halaman ini."}</p> : null}
     {products.length ? <p className="lh-note">{en ? "Prices and stock follow the destination store." : "Harga dan stok mengikuti toko tujuan."}</p> : null}

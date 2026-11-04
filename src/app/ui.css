@@ -59,6 +59,7 @@
 .lh-link-group h2 { margin: .4rem 0 0; font-size: .9rem; font-weight: 700; color: var(--lh-soft); }
 .lh-link { display: flex; align-items: center; gap: .75rem; min-height: 56px; padding: .6rem 1rem; border: 1px solid transparent; border-radius: var(--lh-r-md); font-weight: 650; text-decoration: none; }
 .lh-link span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.lh-favicon { flex: none; border-radius: 4px; object-fit: contain; }
 .lh-note { margin: 2rem 0 0; text-align: center; color: var(--lh-soft); font-size: .8rem; overflow-wrap: anywhere; }
 .lh-note + .lh-note { margin-top: .5rem; }
 .lh-made { display: block; margin-top: .8rem; text-align: center; color: var(--lh-soft); font-size: .8rem; }

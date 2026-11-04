@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { PlatformIcon } from "@/components/platform-icon";
 import { isCommercePlatform } from "@/lib/commerce-platforms";
-import { iconPlatform, linkLabel, linkPlatform, normalizeLink, quickLinks, suggestedTitle } from "@/lib/link-platform";
+import { iconPlatform, linkDomain, linkLabel, linkPlatform, normalizeLink, quickLinks, suggestedTitle } from "@/lib/link-platform";
+import { LinkIcon } from "@/components/link-icon";
 import { addCollection, addLink, deleteCollection, deleteLink, moveLink, reorderCollections, setLinkActive, updateCollection, updateLink } from "../actions";
 
 type Group = { id: string; title: string; position: number };
@@ -42,7 +43,7 @@ function LinkRow({ link, first, last }: { link: LinkItem; first: boolean; last: 
   return <li className={`lh-item${pending ? " pending" : ""}`}>
     <div className="lh-link-row">
       <div className="lh-order"><button type="button" aria-label="Move up" disabled={first || pending} onClick={() => startTransition(() => moveLink(link.id, -1))}><Chevron up /></button><button type="button" aria-label="Move down" disabled={last || pending} onClick={() => startTransition(() => moveLink(link.id, 1))}><Chevron /></button></div>
-      <span className="lh-item-thumb lh-link-icon"><PlatformIcon platform={iconPlatform(link)} size={20} /></span>
+      <span className="lh-item-thumb lh-link-icon"><LinkIcon platform={iconPlatform(link)} domain={linkDomain(link.url)} size={20} /></span>
       <button type="button" className="lh-item-main" onClick={() => setEditing(!editing)} aria-expanded={editing}>
         <b>{link.title}</b>
         <span>{isCommercePlatform(link.platform) ? <em className="lh-tag">Store button</em> : null}{shortUrl(link.url)}</span>
