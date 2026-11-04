@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: { params:Promise<{ slug:strin
   if(!profile) return {};
   const { data:header }=await supabase.from("linktree_headers").select("title,bio").eq("linktree_id",profile.id).maybeSingle();
   const publicTitle=header?.title||profile.name; const publicBio=header?.bio??profile.bio;
-  const title=profile.seo_title||publicTitle; const description=profile.seo_description||publicBio||(locale==="en"?`Visit ${publicTitle} on LinkHub`:`Kunjungi Linktree ${publicTitle}`);
+  const title=profile.seo_title||publicTitle; const description=profile.seo_description||publicBio||(locale==="en"?`Visit ${publicTitle} on LinkHub`:`Kunjungi ${publicTitle} di LinkHub`);
   return {title,description,openGraph:{title,description,type:"website"},twitter:{card:"summary_large_image",title,description}};
 }
 

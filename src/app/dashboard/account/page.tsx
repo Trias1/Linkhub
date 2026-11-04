@@ -7,11 +7,10 @@ export const metadata = { title: "Account · LinkHub" };
 
 export default async function AccountPage({ searchParams }: { searchParams: Promise<{ error?: string; message?: string }> }) {
   const { supabase, user, linktree, linktrees } = await getDashboardContext();
-  const [{ data: profile }, { data: devices }, { data: mfaFactors }, { data: account }, query] = await Promise.all([
+  const [{ data: profile }, { data: devices }, { data: mfaFactors }, query] = await Promise.all([
     supabase.from("linktrees").select("name,slug,avatar_url").eq("id", linktree.id).single(),
     supabase.from("trusted_devices").select("id,label,expires_at,created_at").gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false }),
     supabase.auth.mfa.listFactors(),
-    supabase.from("profiles").select("allow_data_sharing").eq("id", user.id).single(),
     searchParams,
   ]);
 
@@ -34,6 +33,6 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
       {linktrees.length < 3 ? <Link className="lh-btn secondary small lh-mt" href="/dashboard/new">+ New page</Link> : null}
     </section>
 
-    <AccountSecurity allowDataSharing={account?.allow_data_sharing ?? true} devices={devices ?? []} slug={profile?.slug ?? ""} canDeleteLinktree={linktrees.length > 1} initialFactors={(mfaFactors?.all ?? []) as { id: string; factor_type: string; friendly_name?: string; status: string }[]} />
+    <AccountSecurity devices={devices ?? []} slug={profile?.slug ?? ""} canDeleteLinktree={linktrees.length > 1} initialFactors={(mfaFactors?.all ?? []) as { id: string; factor_type: string; friendly_name?: string; status: string }[]} />
   </div>;
 }

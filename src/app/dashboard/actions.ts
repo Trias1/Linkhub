@@ -351,7 +351,7 @@ export async function switchLinktree(formData: FormData) {
 
 export async function createLinktree(formData: FormData) {
   const { user, supabase, linktrees } = await getDashboardContext();
-  if (linktrees.length >= 3) redirect("/dashboard/new?error=You can have up to 3 Linktrees");
+  if (linktrees.length >= 3) redirect("/dashboard/new?error=You can have up to 3 pages");
   const slug = String(formData.get("slug") ?? "").trim().toLowerCase();
   const slugError = slugProblem(slug);
   if (slugError) redirect(`/dashboard/new?error=${encodeURIComponent(slugError)}`);
@@ -369,14 +369,6 @@ function accountError(message: string): never {
 async function requireSensitiveAuth(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   if (data?.nextLevel === "aal2" && data.currentLevel !== "aal2") redirect("/login/mfa?next=/dashboard/account");
-}
-
-export async function savePrivacy(formData: FormData) {
-  const { supabase, user } = await authenticatedClient();
-  const { error } = await supabase.from("profiles").update({ allow_data_sharing: formData.get("allow_data_sharing") === "true" }).eq("id", user.id);
-  if (error) accountError(friendlyError(error));
-  revalidatePath("/dashboard/account");
-  redirect("/dashboard/account?message=Privacy settings saved");
 }
 
 export async function changePassword(formData: FormData) {
@@ -416,8 +408,8 @@ export async function removeTrustedDevice(formData: FormData) {
 export async function deleteLinktreeAccount(formData: FormData) {
   const { supabase, user, linktree, linktrees } = await authenticatedClient();
   await requireSensitiveAuth(supabase);
-  if (linktrees.length <= 1) accountError("You cannot delete your last Linktree. Delete the account to remove everything.");
-  if (String(formData.get("confirmation") ?? "") !== linktree.slug) accountError("Type the Linktree slug exactly to delete it");
+  if (linktrees.length <= 1) accountError("You cannot delete your last page. Delete the account to remove everything.");
+  if (String(formData.get("confirmation") ?? "") !== linktree.slug) accountError("Type the page address exactly to delete it");
   const { error } = await supabase.from("linktrees").delete().eq("id", linktree.id).eq("owner_id", user.id);
   if (error) accountError(friendlyError(error));
   (await cookies()).delete("active_linktree_id");

@@ -21,7 +21,7 @@ export const getDashboardContext = cache(async () => {
     supabase.from("linktrees").select("id,name,slug,avatar_url,created_at").eq("owner_id", user.id).order("created_at"),
     supabase.from("profiles").select("is_admin").eq("id", user.id).single(),
   ]);
-  if (!linktrees?.length) redirect("/login?error=Your first Linktree has not been created yet");
+  if (!linktrees?.length) redirect("/login?error=Your first page has not been created yet");
   const activeId = cookieStore.get("active_linktree_id")?.value;
   const linktree = linktrees.find((item) => item.id === activeId) ?? linktrees[0];
   return { supabase, user, linktree, linktrees, isAdmin: Boolean(account?.is_admin) };

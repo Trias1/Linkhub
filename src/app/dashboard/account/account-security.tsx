@@ -4,14 +4,14 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { PasswordInput } from "@/components/password-input";
-import { changePassword, deleteAccount, deleteLinktreeAccount, removeTrustedDevice, savePrivacy, trustCurrentDevice } from "../actions";
+import { changePassword, deleteAccount, deleteLinktreeAccount, removeTrustedDevice, trustCurrentDevice } from "../actions";
 import { createClient } from "@/lib/supabase/client";
 
 type Factor = { id: string; factor_type: string; friendly_name?: string; status: string };
 type Device = { id: string; label: string; expires_at: string; created_at: string };
 const day = (value: string) => new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
-export function AccountSecurity({ allowDataSharing, devices, slug, canDeleteLinktree, initialFactors }: { allowDataSharing: boolean; devices: Device[]; slug: string; canDeleteLinktree: boolean; initialFactors: Factor[] }) {
+export function AccountSecurity({ devices, slug, canDeleteLinktree, initialFactors }: { devices: Device[]; slug: string; canDeleteLinktree: boolean; initialFactors: Factor[] }) {
   const router = useRouter();
   const [factors, setFactors] = useState<Factor[]>(initialFactors);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -61,10 +61,6 @@ export function AccountSecurity({ allowDataSharing, devices, slug, canDeleteLink
 
     <section className="lh-box"><h2>Password</h2>
       <form action={changePassword} className="lh-password-form"><PasswordInput name="password" autoComplete="new-password" label="New password" hint="At least 8 characters." /><PasswordInput name="confirmation" autoComplete="new-password" label="Repeat new password" /><div><button className="lh-btn small">Change password</button></div></form>
-    </section>
-
-    <section className="lh-box"><h2>Privacy</h2>
-      <form action={savePrivacy} className="lh-setting"><div><b>Share usage data with third-party services</b><p>Currently {allowDataSharing ? "allowed" : "not allowed"}. LinkHub never sells your data.</p></div><input name="allow_data_sharing" type="hidden" value={allowDataSharing ? "false" : "true"} /><button className="lh-btn secondary small">{allowDataSharing ? "Turn off" : "Allow"}</button></form>
     </section>
 
     <section className="lh-box lh-danger-box"><h2>Delete</h2><p className="lh-hint">Deleting is permanent and cannot be undone.</p>
