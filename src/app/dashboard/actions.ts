@@ -10,7 +10,7 @@ import { detectPlatform, isCommercePlatform } from "@/lib/commerce-platforms";
 import { linkPlatform } from "@/lib/link-platform";
 import { slugProblem } from "@/lib/slug";
 import { isUuid, rateLimit } from "@/lib/security";
-import { downloadProductImage, readProductDetails, type ProductDetails } from "@/lib/product-details";
+import { downloadProductImage, readProductDetails, type LookupFailure, type ProductDetails } from "@/lib/product-details";
 
 async function authenticatedClient() {
   return getDashboardContext();
@@ -58,8 +58,15 @@ async function importProductImage(supabase: Awaited<ReturnType<typeof createClie
 export async function fetchProductDetails(url: string): Promise<{ details: ProductDetails | null; error?: string }> {
   await authenticatedClient();
   if (!(await rateLimit("product-details", 20, 300))) return { details: null, error: "Too many lookups. Wait a few minutes, or fill the details in by hand." };
-  const details = await readProductDetails(String(url).slice(0, 2048)).catch(() => null);
-  return details ? { details } : { details: null, error: "Could not read the details from this link. Fill them in by hand." };
+  const result = await readProductDetails(String(url).slice(0, 2048)).catch((): LookupFailure => "unreachable");
+  if (typeof result !== "string") return { details: result };
+  const reasons: Record<LookupFailure, string> = {
+    unsupported: "Auto-fill does not work for this link. Fill the details in by hand.",
+    blocked: "The store did not let LinkHub read this page. Fill the details in by hand.",
+    unreachable: "Could not reach the store. Try again, or fill the details in by hand.",
+    "no-data": "Could not find product details on this page. Fill them in by hand.",
+  };
+  return { details: null, error: reasons[result] };
 }
 
 // Pesan database mentah tidak ditampilkan ke user.

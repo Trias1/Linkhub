@@ -5,6 +5,8 @@ import { priceDigits } from "@/lib/rupiah";
 // Ambil nama, harga, harga coret dan foto dari halaman produk marketplace, untuk mengisi form otomatis.
 // Hanya domain marketplace yang dikenal (bukan alamat bebas) supaya server tidak bisa dipakai untuk SSRF.
 export type ProductDetails = { title: string; price: string; comparePrice: string; image: string };
+// Alasan gagal, supaya pesan ke user (dan diagnosis di produksi) jelas.
+export type LookupFailure = "unsupported" | "blocked" | "unreachable" | "no-data";
 
 const pageHosts: string[] = Object.values(commercePlatforms).flatMap((platform) => [...platform.hosts]);
 // CDN gambar milik marketplace. Gambar hanya diunduh dari sini saat produk disimpan.
@@ -17,19 +19,20 @@ const httpsUrl = (value: string) => { try { const url = new URL(value); return u
 export const isAllowedImage = (value: string) => { const url = httpsUrl(value); return Boolean(url && matches(url.hostname, imageHosts)); };
 
 // Ikuti redirect sendiri (maks. 3), dan setiap lompatan harus tetap ke domain yang diizinkan.
-async function fetchAllowed(start: URL, hosts: string[], accept: string) {
+async function fetchAllowed(start: URL, hosts: string[], accept: string): Promise<Response | LookupFailure> {
   let url = start;
   for (let hop = 0; hop < 4; hop++) {
-    if (!matches(url.hostname, hosts)) return null;
+    if (!matches(url.hostname, hosts)) return "unsupported";
     const response = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(8000), headers: { accept, "accept-language": "id-ID,id;q=0.9,en;q=0.8", "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36" } }).catch(() => null);
-    if (!response) return null;
+    if (!response) return "unreachable";
     if (response.status >= 300 && response.status < 400) {
       const next = response.headers.get("location"); const target = next ? httpsUrl(new URL(next, url).toString()) : null;
-      if (!target) return null; url = target; continue;
+      if (!target) return "unsupported"; url = target; continue;
     }
-    return response.ok ? response : null;
+    if ([401, 403, 429, 503].includes(response.status)) return "blocked";
+    return response.ok ? response : "no-data";
   }
-  return null;
+  return "unreachable";
 }
 
 async function readLimited(response: Response, limit: number) {
@@ -80,6 +83,25 @@ const offerPrice = (value: unknown): string => { const offer = Array.isArray(val
 // Harga di halaman marketplace bisa "11750000", "11.750.000" atau "11750000.00".
 const rupiahDigits = (value: string) => priceDigits(value.replace(/[.,]\d{2}$/, ""));
 
+// Halaman TikTok Shop/Tokopedia menyimpan versi 800px dari foto yang sama; pakai itu kalau ada.
+// Dicari dengan indexOf (bukan regex) karena URL-nya bisa ada di dalam JSON yang di-escape.
+const BACKSLASH = String.fromCharCode(92);
+const endsUrl = (char: string) => char === '"' || char === "'" || char === BACKSLASH || char <= " ";
+function largerImage(html: string, image: string) {
+  const key = image.match(/[/]([0-9a-f]{32})~/)?.[1];
+  if (!key) return image;
+  const text = html.split(BACKSLASH + "u002F").join("/");
+  for (let at = text.indexOf(key + "~"); at >= 0; at = text.indexOf(key + "~", at + 1)) {
+    const start = text.lastIndexOf("https://", at);
+    if (start < 0 || [...text.slice(start, at)].some(endsUrl)) continue;
+    let end = at;
+    while (end < text.length && !endsUrl(text[end])) end++;
+    const candidate = decode(text.slice(start, end));
+    if (candidate.includes(":800:800") && isAllowedImage(candidate)) return candidate;
+  }
+  return image;
+}
+
 function cleanTitle(title: string, host: string) {
   let clean = title.replace(/\s+/g, " ").trim();
   if (host.endsWith("tokopedia.com")) clean = clean.replace(/\s*\|\s*Tokopedia$/i, "").replace(/\s+di\s+[^|]+$/i, "");
@@ -88,23 +110,28 @@ function cleanTitle(title: string, host: string) {
   const cut = clean.slice(0, 100); return cut.slice(0, cut.lastIndexOf(" ") > 60 ? cut.lastIndexOf(" ") : 100).trim();
 }
 
-export async function readProductDetails(link: string): Promise<ProductDetails | null> {
+export async function readProductDetails(link: string): Promise<ProductDetails | LookupFailure> {
   const url = httpsUrl(link);
-  if (!url) return null;
+  if (!url) return "unsupported";
   const response = await fetchAllowed(url, pageHosts, "text/html");
-  const bytes = response && (response.headers.get("content-type") ?? "").includes("text/html") ? await readLimited(response, MAX_PAGE) : null;
-  if (!bytes) return null;
+  if (typeof response === "string") return response;
+  const bytes = (response.headers.get("content-type") ?? "").includes("text/html") ? await readLimited(response, MAX_PAGE) : null;
+  if (!bytes) return "no-data";
   const html = new TextDecoder().decode(bytes);
   const ld = jsonLdProduct(html);
 
   // Tokopedia: blok harga utama berisi harga sekarang dan harga coret (kalau sedang diskon).
   const toped = html.match(/"value":(\d+),"currency":"[A-Z]*","priceFmt":"[^"]*","slashPriceFmt":"([^"]*)","discPercentage":"[^"]*","__typename":"pdpContentSnapshotPrice"/);
-  const price = rupiahDigits(toped?.[1] ?? meta(html, "product:price:amount") ?? "") || rupiahDigits(offerPrice(ld?.offers)) || rupiahDigits(meta(html, "og:price:amount"));
-  const slash = rupiahDigits(toped?.[2] ?? "");
+  // Halaman produk TikTok Shop di shop-id.tokopedia.com (dari link pendek vt.tokopedia.com).
+  const shop = html.match(/"price":\{[^{}]*?"real_price":"([^"]+)","original_price":"([^"]*)"/);
+  const price = rupiahDigits(toped?.[1] ?? shop?.[1] ?? meta(html, "product:price:amount") ?? "") || rupiahDigits(offerPrice(ld?.offers)) || rupiahDigits(meta(html, "og:price:amount"));
+  const slash = rupiahDigits(toped?.[2] ?? shop?.[2] ?? "");
   const comparePrice = slash && price && Number(slash) > Number(price) ? slash : "";
   const title = cleanTitle(meta(html, "og:title") || ld?.name || html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] || "", url.hostname);
-  const image = [meta(html, "og:image"), firstImage(ld?.image)].find((item) => item && isAllowedImage(item)) ?? "";
-  return title || price || image ? { title, price, comparePrice, image } : null;
+  const found = [meta(html, "og:image"), firstImage(ld?.image)].find((item) => item && isAllowedImage(item)) ?? "";
+  const image = found ? largerImage(html, found) : "";
+  if (title || price || image) return { title, price, comparePrice, image };
+  return /captcha|verify you are human|access denied/i.test(html) ? "blocked" : "no-data";
 }
 
 // Unduh foto dari CDN marketplace untuk disimpan di storage kita (URL CDN sering kedaluwarsa).
@@ -112,5 +139,5 @@ export async function downloadProductImage(link: string) {
   const url = httpsUrl(link);
   if (!url || !isAllowedImage(link)) return null;
   const response = await fetchAllowed(url, imageHosts, "image/jpeg,image/png,image/webp");
-  return response ? readLimited(response, MAX_IMAGE) : null;
+  return typeof response === "string" ? null : readLimited(response, MAX_IMAGE);
 }
