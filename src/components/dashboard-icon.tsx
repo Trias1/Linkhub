@@ -1,4 +1,4 @@
-type Props = { name: "links" | "shop" | "design" | "insights" | "views" | "clicks" | "contacts" | "rate" | "account" | "share" | "external" | "chevron"; size?: number };
+type Props = { name: "links" | "shop" | "design" | "insights" | "views" | "clicks" | "rate" | "account" | "share" | "external" | "chevron"; size?: number };
 
 export function DashboardIcon({ name, size = 19 }: Props) {
   const props = { width:size, height:size, viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:2, strokeLinecap:"round" as const, strokeLinejoin:"round" as const, "aria-hidden":true };
@@ -9,7 +9,6 @@ export function DashboardIcon({ name, size = 19 }: Props) {
     insights: <><path d="M4 19V9M10 19V5M16 19v-7M22 19V3"/><path d="M2 19h22"/></>,
     views: <><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></>,
     clicks: <><path d="m5 3 6.5 16 2.1-5.4L19 11.5 5 3Z"/><path d="m14 14 4 4"/></>,
-    contacts: <><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 8h5M19.5 5.5v5"/></>,
     rate: <><path d="M4 19 19 4"/><circle cx="7" cy="7" r="3"/><circle cx="17" cy="17" r="3"/></>,
     account: <><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>,
     share: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></>,
