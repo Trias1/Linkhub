@@ -7,7 +7,7 @@ import { getDashboardContext } from "@/lib/active-linktree";
 import { createClient } from "@/lib/supabase/server";
 import { priceDigits } from "@/lib/rupiah";
 import { detectPlatform, isCommercePlatform } from "@/lib/commerce-platforms";
-import { linkPlatform } from "@/lib/link-platform";
+import { linkPlatform, normalizeLink } from "@/lib/link-platform";
 import { slugProblem } from "@/lib/slug";
 import { isUuid, rateLimit } from "@/lib/security";
 import { downloadProductImage, readProductDetails, type LookupFailure, type ProductDetails } from "@/lib/product-details";
@@ -102,7 +102,7 @@ export async function saveAccount(formData: FormData) {
 }
 
 function linkUrl(value: FormDataEntryValue | null) {
-  try { return validUrl(value); } catch { redirect("/dashboard/links?error=Enter a full link that starts with https:// (or mailto: for email)"); }
+  try { return validUrl(normalizeLink(String(value ?? ""))); } catch { redirect("/dashboard/links?error=Enter a full link, e.g. https://github.com/name, or an email address"); }
 }
 
 export async function addLink(formData: FormData) {

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { PlatformIcon } from "@/components/platform-icon";
 import { isCommercePlatform } from "@/lib/commerce-platforms";
-import { linkLabel, linkPlatform, quickLinks } from "@/lib/link-platform";
+import { iconPlatform, linkLabel, linkPlatform, normalizeLink, quickLinks, suggestedTitle } from "@/lib/link-platform";
 import { addCollection, addLink, deleteCollection, deleteLink, moveLink, reorderCollections, setLinkActive, updateCollection, updateLink } from "../actions";
 
 type Group = { id: string; title: string; position: number };
@@ -15,16 +15,24 @@ const shortUrl = (url: string) => url.replace(/^(https?:\/\/|mailto:)(www\.)?/, 
 function AddLinkForm({ groups }: { groups: Group[] }) {
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
+  // Judul diisi otomatis dari link, tapi tidak menimpa judul yang diketik sendiri.
+  const [autoTitle, setAutoTitle] = useState("");
   const detected = url ? linkPlatform(url) : null;
+  function changeUrl(value: string) {
+    setUrl(value);
+    if (title && title !== autoTitle) return;
+    const next = suggestedTitle(value);
+    setTitle(next); setAutoTitle(next);
+  }
   return <form action={addLink} className="lh-link-form">
-    <div className="lh-quick" role="group" aria-label="Quick add">{quickLinks.map((item) => <button type="button" key={item.platform} onClick={() => { setTitle(item.title); setUrl(item.url); document.getElementById("new-link-url")?.focus(); }}><PlatformIcon platform={item.platform} size={16} />{item.title}</button>)}</div>
+    <div className="lh-quick" role="group" aria-label="Quick add">{quickLinks.map((item) => <button type="button" key={item.platform} onClick={() => { setTitle(item.title); setAutoTitle(item.title); setUrl(item.url); document.getElementById("new-link-url")?.focus(); }}><PlatformIcon platform={item.platform} size={16} />{item.title}</button>)}</div>
     <div className="lh-link-grid">
-      <label className="lh-field">Title<input name="title" required maxLength={80} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g. Order on WhatsApp" /></label>
-      <label className="lh-field">Link<input id="new-link-url" name="url" required inputMode="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://..." /></label>
+      <label className="lh-field">Title<input name="title" required maxLength={80} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Filled in from the link" /></label>
+      <label className="lh-field">Link<input id="new-link-url" name="url" required inputMode="url" value={url} onChange={(event) => changeUrl(event.target.value)} onBlur={() => setUrl(normalizeLink(url))} placeholder="Paste a link, e.g. github.com/name" /></label>
       {groups.length ? <label className="lh-field">Group<select name="collection_id" defaultValue={groups[0].id}>{groups.map((group) => <option key={group.id} value={group.id}>{group.title}</option>)}<option value="">No group</option></select></label> : null}
       <div className="lh-link-submit"><button className="lh-btn small">Add link</button></div>
     </div>
-    <p className="lh-detect" aria-live="polite">{detected && isCommercePlatform(detected) ? <><b>{linkLabel(detected)}</b> store link. It shows as a store button at the top of your page.</> : detected ? <>Shows as a <b>{linkLabel(detected)}</b> link.</> : "Store links (Shopee, Tokopedia, TikTok Shop, ...) become store buttons at the top of your page."}</p>
+    <p className="lh-detect" aria-live="polite">{detected && isCommercePlatform(detected) ? <><b>{linkLabel(detected)}</b> store link. It shows as a store button at the top of your page.</> : detected ? <>Shows as {/^[AEIOU]/.test(linkLabel(detected)) ? "an" : "a"} <b>{linkLabel(detected)}</b> link.</> : "Store links (Shopee, Tokopedia, TikTok Shop, ...) become store buttons at the top of your page."}</p>
   </form>;
 }
 
@@ -34,7 +42,7 @@ function LinkRow({ link, first, last }: { link: LinkItem; first: boolean; last: 
   return <li className={`lh-item${pending ? " pending" : ""}`}>
     <div className="lh-link-row">
       <div className="lh-order"><button type="button" aria-label="Move up" disabled={first || pending} onClick={() => startTransition(() => moveLink(link.id, -1))}><Chevron up /></button><button type="button" aria-label="Move down" disabled={last || pending} onClick={() => startTransition(() => moveLink(link.id, 1))}><Chevron /></button></div>
-      <span className="lh-item-thumb lh-link-icon"><PlatformIcon platform={link.platform} size={20} /></span>
+      <span className="lh-item-thumb lh-link-icon"><PlatformIcon platform={iconPlatform(link)} size={20} /></span>
       <button type="button" className="lh-item-main" onClick={() => setEditing(!editing)} aria-expanded={editing}>
         <b>{link.title}</b>
         <span>{isCommercePlatform(link.platform) ? <em className="lh-tag">Store button</em> : null}{shortUrl(link.url)}</span>
