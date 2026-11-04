@@ -14,13 +14,18 @@ export default async function AdminPage() {
     supabase.from("profiles").select("id,name,slug,created_at").order("created_at", { ascending: false }).limit(20),
   ]);
 
-  return (
-    <main className="admin-shell">
-      <header className="dashboard-header"><Link className="brand" href="/">LinkHub Admin</Link><Link className="text-link" href="/dashboard">User dashboard</Link></header>
-      <section className="admin-stats">
-        <article><span>Total users</span><strong>{users ?? 0}</strong></article><article><span>Total links</span><strong>{links ?? 0}</strong></article><article><span>Page views</span><strong>{views ?? 0}</strong></article><article><span>Link clicks</span><strong>{clicks ?? 0}</strong></article>
+  const day = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" });
+  const stats = [["Accounts", users], ["Links", links], ["Page views", views], ["Link clicks", clicks]] as const;
+
+  return <main className="lh-admin">
+    <header className="lh-auth-bar"><Link className="lh-brand" href="/en">Link<b>Hub</b></Link><Link href="/dashboard">Back to dashboard</Link></header>
+    <div className="lh-admin-body">
+      <h1>Admin</h1>
+      <div className="lh-stats">{stats.map(([label, value]) => <div key={label}><small>{label}</small><b>{(value ?? 0).toLocaleString("en-GB")}</b></div>)}</div>
+      <section className="lh-box"><h2>Newest accounts</h2>
+        <div className="lh-table-wrap"><table className="lh-table"><thead><tr><th>Name</th><th>Address</th><th>Joined</th></tr></thead>
+          <tbody>{recentUsers?.map((item) => <tr key={item.id}><td>{item.name || "No name"}</td><td>{item.slug ? `/${item.slug}` : "Not set"}</td><td>{day.format(new Date(item.created_at))}</td></tr>)}</tbody></table></div>
       </section>
-      <section className="panel"><p className="section-label">Latest 20</p><h1>Registered users</h1><div className="user-table"><div className="user-row user-head"><span>Name</span><span>Slug</span><span>Joined</span></div>{recentUsers?.map((item) => <div className="user-row" key={item.id}><strong>{item.name || "No name"}</strong><span>{item.slug ? `/${item.slug}` : "Not set"}</span><time>{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(item.created_at))}</time></div>)}</div></section>
-    </main>
-  );
+    </div>
+  </main>;
 }

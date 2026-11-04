@@ -40,20 +40,10 @@
 .lh-qr-img svg { display: block; width: 100%; height: 100%; }
 .lh-qr-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .4rem; }
 
-/* Halaman dashboard lama: samakan jarak, kartu, dan notifikasi dengan desain baru. */
-.lh-main .dashboard-topbar { min-height: 0; padding: 24px 0 16px; }
-.lh-main .dashboard-topbar h1, .lh-main .builder-heading h1 { margin: 0; font-size: 1.5rem; letter-spacing: -.02em; }
-.lh-main .section-label { color: var(--lh-muted); font-size: .82rem; font-weight: 600; letter-spacing: 0; text-transform: none; }
-.lh-main .back-link { margin-bottom: .4rem; font-size: .85rem; font-weight: 600; color: var(--lh-muted); }
-.lh-main .panel { border-color: var(--lh-line); border-radius: var(--lh-r-lg); padding: 20px; }
-.lh-main .custom-section, .lh-main .insight-card, .lh-main .account-section, .lh-main .primary-metrics article, .lh-main .insight-range { border-color: var(--lh-line); border-radius: var(--lh-r-lg); box-shadow: none; }
-.lh-main .insight-card:hover, .lh-main .primary-metrics article:hover, .lh-main .panel:hover { box-shadow: none; border-color: var(--lh-line); }
-.lh-main .notice { margin: 0 0 1rem; padding: .7rem .85rem; border-radius: var(--lh-r-md); background: #e4f3e7; color: var(--lh-success); font-size: .9rem; font-weight: 550; }
-.lh-main .notice.error { background: #fdecea; color: var(--lh-danger); }
+/* Field dan tombol di dashboard: ukuran 16px (tanpa zoom di iPhone) dan fokus yang sama. */
 .lh-main :where(input, select, textarea):not([type="checkbox"], [type="radio"], [type="color"], [type="range"]) { border-color: var(--lh-line-strong); font-size: 16px; }
 .lh-main :where(input, select, textarea):focus { outline: none; border-color: var(--lh-ink); box-shadow: var(--lh-focus); }
-.lh-main .linktree-preview, .lh-main .custom-preview { animation: none; }
-.lh-main :where(button, .button-link):not(.lh-btn) { font-size: .9rem; }
+.lh-main :where(button):not(.lh-btn) { font-size: .9rem; }
 
 /* Halaman dashboard baru tanpa kolom pratinjau (Share & QR, Links di layar sempit, dst.) */
 .lh-page-wrap { max-width: 980px; padding: 24px 0 40px; color: var(--lh-ink); }
@@ -168,3 +158,19 @@
   .lh-savebar { bottom: calc(62px + env(safe-area-inset-bottom)); }
   .lh-main .dashboard-topbar h1, .lh-main .builder-heading h1 { font-size: 1.3rem; }
 }
+
+/* Memuat halaman dashboard: blok abu-abu polos. */
+.lh-loading { display: grid; gap: 12px; max-width: 760px; padding: 24px 0; }
+.lh-loading span { display: block; height: 72px; border-radius: var(--lh-r-lg); background: var(--lh-surface-2); }
+.lh-loading span:first-child { width: 45%; height: 36px; }
+
+/* Admin */
+.lh-admin { min-height: 100vh; background: var(--lh-paper); color: var(--lh-ink); }
+.lh-admin-body { max-width: 960px; margin: 0 auto; padding: 24px 20px 48px; }
+.lh-admin h1 { margin: 0 0 1rem; font-size: 1.5rem; letter-spacing: -.02em; }
+.lh-admin .lh-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.lh-table-wrap { overflow-x: auto; }
+.lh-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.lh-table th { padding: 0 .6rem .5rem 0; border-bottom: 1px solid var(--lh-line); color: var(--lh-muted); font-size: .8rem; font-weight: 600; text-align: left; }
+.lh-table td { padding: .6rem .6rem .6rem 0; border-bottom: 1px solid var(--lh-line); white-space: nowrap; }
+@media (max-width: 700px) { .lh-admin .lh-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
