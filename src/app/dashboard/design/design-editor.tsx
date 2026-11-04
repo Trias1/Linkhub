@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PlatformIcon } from "@/components/platform-icon";
+import { profileStyle } from "@/lib/profile-style";
 import { themes } from "@/lib/themes";
 import { saveCustomDesign } from "../actions";
 
@@ -31,8 +32,7 @@ function Color({ label, name, value, onChange }: { label: string; name?: string;
 export function DesignEditor({ initial, error, message }: { initial: Design; error?: string; message?: string }) {
   const [design, setDesign] = useState(initial);
   const set = (key: keyof Design) => (value: string) => setDesign((current) => ({ ...current, [key]: value }));
-  const wallpaper = design.wallpaper_style === "gradient" ? `linear-gradient(135deg, ${design.background_color}, ${design.button_color})` : design.wallpaper_style === "soft" ? `radial-gradient(circle at top, ${design.button_color}, ${design.background_color} 58%)` : design.background_color;
-  const vars = { background: wallpaper, "--profile-bg": design.background_color, "--profile-text": design.text_color, "--profile-button": design.button_color, "--profile-button-text": design.button_text_color, "--profile-title": design.title_color } as React.CSSProperties;
+  const vars = profileStyle(design);
   const changed = JSON.stringify(design) !== JSON.stringify(initial);
 
   return <form action={saveCustomDesign} className="lh-dash lh-design">

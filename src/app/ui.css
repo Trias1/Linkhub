@@ -8,7 +8,7 @@
 :where(a, button, input, select, textarea, summary):focus-visible { outline: 2px solid var(--lh-ink); outline-offset: 2px; }
 
 /* ---------- halaman publik /[slug] ---------- */
-.lh-profile { min-height: 100vh; color: var(--profile-text); --lh-card: color-mix(in srgb, var(--profile-bg), white 72%); --lh-card-line: color-mix(in srgb, var(--profile-text), transparent 86%); --lh-soft: color-mix(in srgb, var(--profile-text), transparent 35%); }
+.lh-profile { container-type: inline-size; min-height: 100vh; color: var(--profile-text); --lh-card: color-mix(in srgb, var(--profile-bg), white 72%); --lh-card-line: color-mix(in srgb, var(--profile-text), transparent 86%); --lh-soft: color-mix(in srgb, var(--profile-text), transparent 35%); }
 .lh-page { max-width: 720px; margin: 0 auto; padding: 28px 16px 40px; }
 .lh-head { display: grid; justify-items: center; gap: .45rem; text-align: center; }
 .lh-avatar { width: 88px; height: 88px; border-radius: 50%; display: grid; place-items: center; background: var(--profile-button) center / cover no-repeat; color: var(--profile-button-text); font-size: 1.7rem; font-weight: 800; box-shadow: 0 0 0 3px var(--lh-card); }
@@ -26,7 +26,7 @@
 .lh-section-title h2 { margin: 0; font-size: 1.05rem; }
 .lh-section-title span { color: var(--lh-soft); font-size: .82rem; }
 
-.lh-featured { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 1rem; padding: .8rem; border-radius: var(--lh-r-lg); background: var(--lh-card); border: 1.5px solid var(--profile-text); }
+.lh-featured { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 1rem; padding: .8rem; border-radius: var(--lh-r-lg); background: var(--lh-card); border: 1.5px solid var(--profile-text); }
 .lh-featured + .lh-featured { margin-top: .6rem; }
 .lh-featured h3 { margin: .45rem 0 .25rem; font-size: 1.05rem; line-height: 1.25; overflow-wrap: anywhere; }
 .lh-featured .lh-buy { max-width: 240px; margin-top: .65rem; }
@@ -63,7 +63,8 @@
 .lh-note + .lh-note { margin-top: .5rem; }
 .lh-made { display: block; margin-top: .8rem; text-align: center; color: var(--lh-soft); font-size: .8rem; }
 
-@media (min-width: 640px) {
+/* Container query, bukan media query: pratinjau di bingkai HP (Design, landing) harus pakai tata letak HP. */
+@container (min-width: 640px) {
   .lh-page { padding-top: 48px; }
   .lh-stores { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
   .lh-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }

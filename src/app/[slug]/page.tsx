@@ -1,4 +1,5 @@
-﻿import type { Metadata } from "next";
+﻿import { profileStyle } from "@/lib/profile-style";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { fetchProducts, liveProducts } from "@/lib/products";
@@ -28,7 +29,6 @@ export default async function PublicProfile({ params, searchParams }: { params:P
   ]);
   // Pemilik bisa membaca produk terjadwal lewat RLS, jadi saring juga di sini.
   const visible=liveProducts(products);
-  const background=profile.wallpaper_style==="gradient"?`linear-gradient(135deg, ${profile.background_color}, ${profile.button_color})`:profile.wallpaper_style==="soft"?`radial-gradient(circle at top, ${profile.button_color}, ${profile.background_color} 58%)`:profile.background_color;
-  const style={background,"--profile-bg":profile.background_color,"--profile-text":profile.text_color,"--profile-button":profile.button_color,"--profile-button-text":profile.button_text_color,"--profile-title":profile.title_color} as React.CSSProperties;
+  const style=profileStyle(profile);
   return <main className={`lh-profile font-${profile.page_font}`} style={style}><PublicProfileContent track={preview!=="1"} locale={locale} profile={{id:profile.id,name:header?.title||profile.name,bio:header?.bio??profile.bio,avatar_url:profile.avatar_url,title_style:profile.title_style,button_style:profile.button_style,button_roundness:profile.button_roundness,custom_footer:profile.custom_footer}} linkCollections={linkCollections??[]} links={links??[]} shopCollections={shopCollections??[]} products={visible.map(({id,collection_id,platform,title,price,image_url,compare_price,is_featured,ends_at})=>({id,collection_id,platform,title,price,image_url,compare_price,is_featured,ends_at}))}/></main>;
 }
