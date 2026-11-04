@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { priceDigits } from "@/lib/rupiah";
 import { detectPlatform, isCommercePlatform } from "@/lib/commerce-platforms";
 import { linkPlatform } from "@/lib/link-platform";
+import { slugProblem } from "@/lib/slug";
 import { hashTrustedToken } from "@/lib/trusted-device";
 import { isUuid } from "@/lib/security";
 
@@ -43,7 +44,7 @@ async function uploadProductImage(supabase: Awaited<ReturnType<typeof createClie
 }
 // Pesan database mentah tidak ditampilkan ke user.
 function friendlyError(error: { code?: string; message: string }) {
-  if (error.code === "23505") return "That is already taken. Try another name or slug.";
+  if (error.code === "23505") return "That is already taken. Try another page address.";
   if (error.code === "42501") return "You do not have access to change this.";
   if (error.code === "PGRST204" || error.code === "42703") return "The database is not up to date. Run the latest SQL file in Supabase.";
   if (error.code === "23514") return "Invalid input. Check the text length or link format.";
@@ -59,7 +60,8 @@ function validColor(value: FormDataEntryValue | null) {
 export async function saveAccount(formData: FormData) {
   const { supabase, user, linktree } = await authenticatedClient();
   const slug = String(formData.get("slug") ?? "").trim().toLowerCase();
-  if (!/^[a-z0-9-]{3,40}$/.test(slug)) redirect("/dashboard/account?error=Slug must be 3-40 characters (a-z, 0-9, -)");
+  const slugError = slugProblem(slug);
+  if (slugError) redirect(`/dashboard/account?error=${encodeURIComponent(slugError)}`);
   const photo = String(formData.get("avatar_url") ?? "").trim();
   if (photo) {
     try { if (!["http:", "https:"].includes(new URL(photo).protocol)) throw new Error(); }
@@ -351,7 +353,8 @@ export async function createLinktree(formData: FormData) {
   const { user, supabase, linktrees } = await getDashboardContext();
   if (linktrees.length >= 3) redirect("/dashboard/new?error=You can have up to 3 Linktrees");
   const slug = String(formData.get("slug") ?? "").trim().toLowerCase();
-  if (!/^[a-z0-9-]{3,40}$/.test(slug)) redirect("/dashboard/new?error=Slug must be 3-40 characters (a-z, 0-9, -)");
+  const slugError = slugProblem(slug);
+  if (slugError) redirect(`/dashboard/new?error=${encodeURIComponent(slugError)}`);
   const name = String(formData.get("name") ?? "").trim().slice(0, 60);
   const bio = String(formData.get("bio") ?? "").trim().slice(0, 160);
   const { data, error } = await supabase.from("linktrees").insert({ owner_id: user.id, name, bio, slug }).select("id").single();
