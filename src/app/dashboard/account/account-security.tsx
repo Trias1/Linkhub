@@ -1,18 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { PasswordInput } from "@/components/password-input";
-import { changePassword, deleteAccount, deleteLinktreeAccount, removeTrustedDevice, trustCurrentDevice } from "../actions";
+import { changePassword, deleteAccount, deleteLinktreeAccount } from "../actions";
 import { createClient } from "@/lib/supabase/client";
 
 type Factor = { id: string; factor_type: string; friendly_name?: string; status: string };
-type Device = { id: string; label: string; expires_at: string; created_at: string };
-const day = (value: string) => new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
-export function AccountSecurity({ devices, slug, canDeleteLinktree, initialFactors }: { devices: Device[]; slug: string; canDeleteLinktree: boolean; initialFactors: Factor[] }) {
-  const router = useRouter();
+export function AccountSecurity({ slug, canDeleteLinktree, initialFactors }: { slug: string; canDeleteLinktree: boolean; initialFactors: Factor[] }) {
   const [factors, setFactors] = useState<Factor[]>(initialFactors);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [totp, setTotp] = useState<{ id: string; qr: string; secret: string } | null>(null);
@@ -43,11 +39,6 @@ export function AccountSecurity({ devices, slug, canDeleteLinktree, initialFacto
     setMessage(error ? { ok: false, text: "Could not turn it off. Sign in again and retry." } : { ok: true, text: "Authenticator app turned off." });
     if (!error) await loadFactors();
   }
-  async function trustDevice() {
-    const result = await trustCurrentDevice();
-    setMessage(result.error ? { ok: false, text: result.error } : { ok: true, text: "This device is trusted for 30 days." });
-    if (!result.error) router.refresh();
-  }
 
   return <>
     {message ? <p className={message.ok ? "lh-ok" : "lh-alert"} role="status">{message.text}</p> : null}
@@ -55,8 +46,6 @@ export function AccountSecurity({ devices, slug, canDeleteLinktree, initialFacto
     <section className="lh-box"><h2>Security</h2>
       <div className="lh-setting"><div><b>Authenticator app</b><p>Ask for a 6-digit code from an app like Google Authenticator when you sign in.</p></div>{verified ? <><span className="lh-status live">On</span><button type="button" className="lh-btn secondary small" onClick={() => void removeFactor(verified.id)}>Turn off</button></> : <button type="button" className="lh-btn small" onClick={() => void enrollTotp()}>Set up</button>}</div>
       {totp ? <form action={verifyTotp} className="lh-totp"><Image alt="Authenticator QR code" height={160} src={totp.qr} unoptimized width={160} /><div><p>Scan this QR code with your authenticator app, or enter the key by hand:</p><code>{totp.secret}</code><label className="lh-field">6-digit code<input name="code" inputMode="numeric" autoComplete="one-time-code" minLength={6} maxLength={6} required /></label><div className="lh-row"><button className="lh-btn small">Verify and turn on</button><button type="button" className="lh-btn secondary small" onClick={() => setTotp(null)}>Cancel</button></div></div></form> : null}
-      {verified ? <div className="lh-setting"><div><b>Trusted devices</b><p>Skip the code on this browser for 30 days.</p></div><button type="button" className="lh-btn secondary small" onClick={() => void trustDevice()}>Trust this device</button></div> : null}
-      {devices.length ? <ul className="lh-devices">{devices.map((device) => <li key={device.id}><span><b>{device.label}</b><small>Trusted until {day(device.expires_at)}</small></span><form action={removeTrustedDevice}><input name="device_id" type="hidden" value={device.id} /><button className="lh-btn secondary small">Remove</button></form></li>)}</ul> : null}
     </section>
 
     <section className="lh-box"><h2>Password</h2>

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { trustCurrentDevice } from "@/app/dashboard/actions";
 
 type Factor = { id: string; factor_type: string; friendly_name?: string };
 
@@ -23,7 +22,6 @@ export function MfaChallenge({ next }: { next: string }) {
     const failed = () => { setBusy(false); setError("That code did not work. Try the newest code from your app."); };
     if (factor.factor_type === "phone") { const challenge = await supabase.auth.mfa.challenge({ factorId, channel: "sms" }); if (challenge.error) return failed(); const result = await supabase.auth.mfa.verify({ factorId, challengeId: challenge.data.id, code }); if (result.error) return failed(); }
     else { const result = await supabase.auth.mfa.challengeAndVerify({ factorId, code }); if (result.error) return failed(); }
-    if (formData.get("trust") === "on") { const result = await trustCurrentDevice(); if (result.error) { setBusy(false); return setError(result.error); } }
     router.push(next); router.refresh();
   }
 
@@ -31,7 +29,6 @@ export function MfaChallenge({ next }: { next: string }) {
     {error ? <p className="lh-alert" role="alert">{error}</p> : null}
     {factors.length > 1 ? <label className="lh-field">Method<select value={factorId} onChange={(event) => setFactorId(event.target.value)}>{factors.map((factor) => <option key={factor.id} value={factor.id}>{factor.friendly_name || factor.factor_type}</option>)}</select></label> : null}
     <label className="lh-field">6-digit code<input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9 ]{6,7}" maxLength={7} required autoFocus /></label>
-    <label className="lh-check-row"><input name="trust" type="checkbox" /> Trust this device for 30 days</label>
     <button className="lh-btn" disabled={!factorId || busy}>{busy ? "Checking…" : "Continue"}</button>
   </form>;
 }

@@ -10,7 +10,7 @@ export default function PrivacyPage() {
     <ul>
       <li><b>Sign-in details.</b> Your email address and password. The password is stored as a hash by our sign-in provider; nobody at LinkHub can read it.</li>
       <li><b>Your pages.</b> The name, address, bio, photo, design, links and products you add, including product photos you upload. All of this is public on your page, apart from links and products you turn off.</li>
-      <li><b>Security settings.</b> Whether you use a code from an authenticator app, and the browsers you chose to trust. A trusted browser is kept as a coded token with a name and an expiry date.</li>
+      <li><b>Security settings.</b> Whether you use a code from an authenticator app. The secret behind the codes is stored by our sign-in provider.</li>
     </ul>
 
     <h2>If you visit a LinkHub page</h2>
@@ -23,7 +23,7 @@ export default function PrivacyPage() {
     <p>When you tap Buy, you leave LinkHub and go to the store, for example Shopee or Tokopedia. What happens there is covered by that store&rsquo;s own privacy policy.</p>
 
     <h2>Cookies</h2>
-    <p>LinkHub only uses cookies it needs to work: one that keeps you signed in, one that remembers a trusted browser, one that remembers which of your pages you are editing, and the one-day visit code above. There are no advertising or tracking cookies.</p>
+    <p>LinkHub only uses cookies it needs to work: one that keeps you signed in, one that remembers which of your pages you are editing, and the one-day visit code above. There are no advertising or tracking cookies.</p>
 
     <h2>Services we use</h2>
     <ul>

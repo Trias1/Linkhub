@@ -9,7 +9,6 @@ import { priceDigits } from "@/lib/rupiah";
 import { detectPlatform, isCommercePlatform } from "@/lib/commerce-platforms";
 import { linkPlatform } from "@/lib/link-platform";
 import { slugProblem } from "@/lib/slug";
-import { hashTrustedToken } from "@/lib/trusted-device";
 import { isUuid } from "@/lib/security";
 
 async function authenticatedClient() {
@@ -381,28 +380,6 @@ export async function changePassword(formData: FormData) {
   const { error } = await supabase.auth.updateUser({ password });
   if (error) accountError(friendlyError(error));
   redirect("/dashboard/account?message=Password updated");
-}
-
-export async function trustCurrentDevice() {
-  const { supabase, user } = await authenticatedClient();
-  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (aal?.currentLevel !== "aal2") return { error: "Verify MFA before trusting this device" };
-  const token = crypto.randomUUID() + crypto.randomUUID();
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-  const { error } = await supabase.from("trusted_devices").insert({ user_id: user.id, token_hash: await hashTrustedToken(token), label: "Current browser", expires_at: expiresAt.toISOString() });
-  if (error) return { error: friendlyError(error) };
-  (await cookies()).set("trusted_device", token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", expires: expiresAt });
-  revalidatePath("/dashboard/account");
-  return { error: null };
-}
-
-export async function removeTrustedDevice(formData: FormData) {
-  const { supabase, user } = await authenticatedClient();
-  const id = String(formData.get("device_id") ?? "");
-  const { error } = await supabase.from("trusted_devices").delete().eq("id", id).eq("user_id", user.id);
-  if (error) accountError(friendlyError(error));
-  (await cookies()).delete("trusted_device");
-  revalidatePath("/dashboard/account");
 }
 
 export async function deleteLinktreeAccount(formData: FormData) {
