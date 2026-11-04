@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { AccountLinks } from "@/components/account-links";
 
 // Header dan footer halaman publik LinkHub (landing, privacy, terms).
 export function SiteHeader() {
   return <header className="lh-land-nav lh-land-wrap">
     <Link className="lh-brand" href="/en">Link<b>Hub</b></Link>
-    <nav aria-label="Account"><Link href="/en/login">Sign in</Link><Link className="lh-btn small" href="/en/signup">Create a page</Link></nav>
+    <nav aria-label="Account"><AccountLinks /></nav>
   </header>;
 }
 

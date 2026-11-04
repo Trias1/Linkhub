@@ -13,4 +13,4 @@ export async function proxy(request:NextRequest){
   const headers=new Headers(request.headers);headers.set("x-linkhub-locale",locale);
   const response=await updateSession(request,url,headers);response.cookies.set("locale",locale,{sameSite:"lax",path:"/",maxAge:31536000});return response;
 }
-export const config={matcher:["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"]};
+export const config={matcher:["/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"]};

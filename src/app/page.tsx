@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PlatformIcon } from "@/components/platform-icon";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
+import { HeroSecondaryLink } from "@/components/account-links";
 import { platformColor, platformLabel } from "@/lib/commerce-platforms";
 import { profileStyle } from "@/lib/profile-style";
 
@@ -54,7 +55,7 @@ export default function Home() {
           <h1>A shop page for your Shopee, Tokopedia and TikTok Shop products.</h1>
           <p>Paste your product links, add prices and promos, and put one link in your bio. Buyers tap Buy and check out in the store they already use.</p>
           <p>LinkHub tells you which products get the taps, so you know what to post next.</p>
-          <div className="lh-land-actions"><Link className="lh-btn" href="/en/signup">Create a page</Link><Link href="/en/login">I already have a page</Link></div>
+          <div className="lh-land-actions"><Link className="lh-btn" href="/en/signup">Create a page</Link><HeroSecondaryLink /></div>
           <p className="lh-land-free">It is free. There is no paid plan and nothing is locked. You can have up to three pages, for example one for your own shop and one for affiliate picks.</p>
         </div>
         <figure>
