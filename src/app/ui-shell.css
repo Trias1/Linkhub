@@ -123,10 +123,32 @@
 .lh-rank > li > b { text-align: right; }
 .lh-lifetime { margin-top: 14px; }
 
+/* Account & security, New page */
+.lh-account-form, .lh-password-form { display: grid; gap: 14px; max-width: 560px; }
+.lh-setting { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; padding: 12px 0; border-top: 1px solid var(--lh-line); }
+.lh-box > h2 + .lh-setting, .lh-box > .lh-hint + .lh-setting { border-top: 0; padding-top: 4px; }
+.lh-setting > div { flex: 1; min-width: 220px; }
+.lh-setting b { font-size: .93rem; }
+.lh-setting p { margin: .15rem 0 0; color: var(--lh-muted); font-size: .86rem; line-height: 1.45; }
+.lh-setting input { width: 100%; max-width: 320px; height: 40px; margin-top: .5rem; padding: 0 .8rem; border: 1px solid var(--lh-line-strong); border-radius: var(--lh-r-md); font: inherit; font-size: 16px; }
+.lh-setting code, .lh-totp code { padding: .05rem .3rem; border-radius: 5px; background: var(--lh-surface-2); font-size: .85em; overflow-wrap: anywhere; }
+.lh-totp { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 16px; align-items: start; margin: 4px 0 12px; padding: 14px; border-radius: var(--lh-r-md); background: var(--lh-surface-2); }
+.lh-totp img { border-radius: 8px; background: #fff; }
+.lh-totp > div { display: grid; gap: .6rem; }
+.lh-totp p { margin: 0; font-size: .88rem; }
+.lh-row { display: flex; flex-wrap: wrap; gap: .5rem; }
+.lh-devices { display: grid; margin: 0; padding: 0; list-style: none; }
+.lh-devices li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 10px 0; border-top: 1px solid var(--lh-line); }
+.lh-devices li > span:first-child { display: grid; min-width: 0; }
+.lh-devices small { color: var(--lh-muted); font-size: .8rem; }
+.lh-danger-box h2 { color: var(--lh-danger); }
+.lh-mt { margin-top: .8rem; }
+
 @media (max-width: 760px) {
   .lh-page-wrap { padding-top: 16px; }
   .lh-share-grid, .lh-seo, .lh-two { grid-template-columns: minmax(0, 1fr); }
   .lh-stats-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lh-totp { grid-template-columns: minmax(0, 1fr); justify-items: start; }
   .lh-chart:has(.lh-chart-day:nth-child(8)) .lh-chart-day:not(:nth-child(7n+1)) small { visibility: hidden; }
   .lh-chart:has(.lh-chart-day:nth-child(32)) .lh-chart-day small { visibility: hidden; }
 }
