@@ -1,6 +1,6 @@
 -- 020: wajibkan kode MFA di level database untuk akun yang mengaktifkan MFA.
--- USULAN, BELUM DIJALANKAN. Jalankan hanya setelah OK owner, dan setelah kode app tidak lagi
--- memakai "Trust this device" (sesi perangkat tepercaya masih aal1, jadi akan ditolak di sini).
+-- Sudah dijalankan di produksi 4 Nov 2026 dengan OK owner (cek: 32 policy restrictive, 13 tabel, 1 fungsi).
+-- Kode app tidak lagi memakai "Trust this device": sesi perangkat tepercaya masih aal1 dan akan ditolak di sini.
 --
 -- Pola dari dokumentasi Supabase (Auth > MFA > "Enforce only for users that have opted-in"):
 -- policy RESTRICTIVE ditambahkan di atas policy yang sudah ada. Akun tanpa MFA tidak terpengaruh.
