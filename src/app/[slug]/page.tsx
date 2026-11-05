@@ -17,8 +17,8 @@ export async function generateMetadata({ params }: { params:Promise<{ slug:strin
   return {title,description,openGraph:{title,description,type:"website"},twitter:{card:"summary_large_image",title,description}};
 }
 
-export default async function PublicProfile({ params, searchParams }: { params:Promise<{ slug:string }>; searchParams:Promise<{ preview?:string }> }) {
-  const { slug }=await params; const { preview }=await searchParams; const supabase=await createClient(); const locale=await getLocale();
+export default async function PublicProfile({ params, searchParams }: { params:Promise<{ slug:string }>; searchParams:Promise<{ preview?:string; no?:string }> }) {
+  const { slug }=await params; const { preview, no }=await searchParams; const supabase=await createClient(); const locale=await getLocale();
   const { data:profile }=await supabase.from("linktrees").select("id,name,bio,avatar_url,background_color,text_color,button_color,title_style,title_color,wallpaper_style,button_style,button_roundness,button_text_color,page_font,custom_footer").eq("slug",slug).single();
   if(!profile) notFound();
   const [{data:header},{data:linkCollections},{data:links},{data:shopCollections},products]=await Promise.all([
@@ -33,5 +33,5 @@ export default async function PublicProfile({ params, searchParams }: { params:P
   const categoryOrder=new Map((shopCollections??[]).map((item,index)=>[item.id,index]));
   const visible=liveProducts(products).sort((a,b)=>(categoryOrder.get(a.collection_id)??0)-(categoryOrder.get(b.collection_id)??0));
   const style=profileStyle(profile);
-  return <main className={`lh-profile font-${profile.page_font}`} style={style}><PublicProfileContent track={preview!=="1"} locale={locale} profile={{id:profile.id,name:header?.title||profile.name,bio:header?.bio??profile.bio,avatar_url:profile.avatar_url,title_style:profile.title_style,button_style:profile.button_style,button_roundness:profile.button_roundness,custom_footer:profile.custom_footer}} linkCollections={linkCollections??[]} links={(links??[]).map(({url,...link})=>{const platform=iconPlatform({platform:link.platform,url});return {...link,platform,domain:platform==="website"?linkDomain(url):null};})} shopCollections={shopCollections??[]} products={visible.map(({id,collection_id,platform,title,price,image_url,compare_price,is_featured,ends_at})=>({id,collection_id,platform,title,price,image_url,compare_price,is_featured,ends_at}))}/></main>;
+  return <main className={`lh-profile font-${profile.page_font}`} style={style}><PublicProfileContent track={preview!=="1"} locale={locale} profile={{id:profile.id,name:header?.title||profile.name,bio:header?.bio??profile.bio,avatar_url:profile.avatar_url,title_style:profile.title_style,button_style:profile.button_style,button_roundness:profile.button_roundness,custom_footer:profile.custom_footer}} linkCollections={linkCollections??[]} links={(links??[]).map(({url,...link})=>{const platform=iconPlatform({platform:link.platform,url});return {...link,platform,domain:platform==="website"?linkDomain(url):null};})} shopCollections={shopCollections??[]} initialSearch={/^\d{1,6}$/.test(no??"")?no!:""} products={visible.map(({id,collection_id,platform,title,price,image_url,compare_price,is_featured,ends_at,number})=>({id,collection_id,platform,title,price,image_url,compare_price,is_featured,ends_at,number}))}/></main>;
 }

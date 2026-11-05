@@ -8,36 +8,31 @@ export default async function InsightsPage({ searchParams }: { searchParams: Pro
   const query = await searchParams;
   const period = insightRange(query.range, query.from, query.to);
   const { supabase, linktree } = await getDashboardContext();
-  const inPeriod = <T extends { gte: (column: string, value: string) => T; lte: (column: string, value: string) => T }>(builder: T) => builder.gte("created_at", period.from).lte("created_at", period.to);
-  const [{ count: lifetimeViews }, { count: lifetimeClicks }, { data: viewEvents }, { data: clickEvents }, { data: productEvents }, { data: links }, { data: products }] = await Promise.all([
+  const [{ count: lifetimeViews }, { count: lifetimeClicks }, { data: summary, error: summaryError }, { data: links }, { data: products }] = await Promise.all([
     supabase.from("page_views").select("id", { count: "exact", head: true }).eq("linktree_id", linktree.id),
     supabase.from("link_clicks").select("id", { count: "exact", head: true }).eq("linktree_id", linktree.id),
-    inPeriod(supabase.from("page_views").select("created_at").eq("linktree_id", linktree.id)).order("created_at").limit(10000),
-    inPeriod(supabase.from("link_clicks").select("link_id,created_at").eq("linktree_id", linktree.id)).order("created_at").limit(10000),
-    // Tabel dari SQL 018; kalau belum ada hasilnya null.
-    inPeriod(supabase.from("product_clicks").select("product_id,platform,created_at").eq("linktree_id", linktree.id)).order("created_at").limit(10000),
+    // Dihitung di database per hari WIB (SQL 021), jadi tidak terpotong di batas baris API.
+    supabase.rpc("insights_summary", { p_linktree_id: linktree.id, p_from: period.from, p_to: period.to }),
     supabase.from("links").select("id,title,platform").eq("linktree_id", linktree.id),
     supabase.from("products").select("id,title,platform").eq("linktree_id", linktree.id),
   ]);
-  // Grafik dihitung dari event mentah (maks 10 ribu per jenis); ganti ke agregasi SQL kalau volumenya sudah sebesar itu.
+  type Summary = { days: { day: string; views: number; clicks: number; buys: number }[]; links: { id: string; count: number }[]; products: { id: string; count: number }[]; stores: { platform: string; count: number }[] };
+  const data: Summary = { days: [], links: [], products: [], stores: [], ...(summary as Partial<Summary> | null) };
   const days = insightDays(period.from, period.to).map((day) => ({ ...day, buys: 0 }));
   const dayMap = new Map(days.map((day) => [day.key, day]));
-  viewEvents?.forEach((event) => { const day = dayMap.get(event.created_at.slice(0, 10)); if (day) day.views += 1; });
-  clickEvents?.forEach((event) => { const day = dayMap.get(event.created_at.slice(0, 10)); if (day) day.clicks += 1; });
-  productEvents?.forEach((event) => { const day = dayMap.get(event.created_at.slice(0, 10)); if (day) day.buys += 1; });
-  const rank = <T extends { id: string; title: string; platform: string | null }>(items: T[] | null, ids: string[], fallback: string) => {
-    const counts = new Map<string, number>(); ids.forEach((id) => counts.set(id, (counts.get(id) ?? 0) + 1));
+  data.days.forEach((row) => { const day = dayMap.get(row.day); if (day) { day.views = row.views; day.clicks = row.clicks; day.buys = row.buys; } });
+  const sum = (key: "views" | "clicks" | "buys") => data.days.reduce((total, row) => total + row[key], 0);
+  const rank = <T extends { id: string; title: string; platform: string | null }>(items: T[] | null, counts: { id: string; count: number }[], fallback: string) => {
     const byId = new Map((items ?? []).map((item) => [item.id, item]));
-    return [...counts].map(([id, clicks]) => ({ title: byId.get(id)?.title || fallback, platform: byId.get(id)?.platform ?? null, clicks })).sort((a, b) => b.clicks - a.clicks).slice(0, 5);
+    return counts.map(({ id, count }) => ({ title: byId.get(id)?.title || fallback, platform: byId.get(id)?.platform ?? null, clicks: count }));
   };
-  const stores = new Map<string, number>(); productEvents?.forEach((event) => stores.set(event.platform, (stores.get(event.platform) ?? 0) + 1));
   return <InsightsDashboard
     period={period}
     days={days}
-    totals={{ views: viewEvents?.length ?? 0, clicks: clickEvents?.length ?? 0, buys: productEvents?.length ?? 0, lifetimeViews: lifetimeViews ?? 0, lifetimeClicks: lifetimeClicks ?? 0 }}
-    productsReady={productEvents !== null}
-    topLinks={rank(links, (clickEvents ?? []).map((event) => event.link_id), "Deleted link")}
-    topProducts={rank(products, (productEvents ?? []).map((event) => event.product_id), "Deleted product")}
-    stores={[...stores].sort((a, b) => b[1] - a[1])}
+    totals={{ views: sum("views"), clicks: sum("clicks"), buys: sum("buys"), lifetimeViews: lifetimeViews ?? 0, lifetimeClicks: lifetimeClicks ?? 0 }}
+    productsReady={!summaryError}
+    topLinks={rank(links, data.links, "Deleted link")}
+    topProducts={rank(products, data.products, "Deleted product")}
+    stores={data.stores.map((row) => [row.platform, row.count] as [string, number])}
   />;
 }

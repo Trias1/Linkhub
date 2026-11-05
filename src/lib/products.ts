@@ -3,17 +3,20 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export type Product = {
   id: string; collection_id: string; platform: string; title: string; url: string; price: string; image_url: string | null; is_active: boolean;
   compare_price: string; is_featured: boolean; starts_at: string | null; ends_at: string | null;
+  number: number | null;
 };
 
 const legacyColumns = "id,collection_id,platform,title,url,price,image_url,is_active";
-const columns = `${legacyColumns},compare_price,is_featured,starts_at,ends_at`;
+const promoColumns = `${legacyColumns},compare_price,is_featured,starts_at,ends_at`;
+const columns = `${promoColumns},number`;
 
 // Kolom promo/jadwal datang dari SQL 018. Kalau belum dijalankan, pakai kolom lama supaya halaman tetap jalan.
 export async function fetchProducts(supabase: SupabaseClient, linktreeId: string, onlyActive = false) {
   const run = (select: string) => { const query = supabase.from("products").select(select).eq("linktree_id", linktreeId); return (onlyActive ? query.eq("is_active", true) : query).order("position").order("created_at"); };
   let { data, error } = await run(columns);
+  if (error) ({ data, error } = await run(promoColumns));
   if (error) ({ data, error } = await run(legacyColumns));
-  return ((data ?? []) as unknown as Partial<Product>[]).map((item) => ({ compare_price: "", is_featured: false, starts_at: null, ends_at: null, ...item }) as Product);
+  return ((data ?? []) as unknown as Partial<Product>[]).map((item) => ({ compare_price: "", is_featured: false, starts_at: null, ends_at: null, number: null, ...item }) as Product);
 }
 
 export type ProductStatus = "live" | "scheduled" | "ended" | "hidden";
