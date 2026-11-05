@@ -7,6 +7,7 @@ import { logout } from "@/app/auth/actions";
 import { DashboardIcon } from "@/components/dashboard-icon";
 import { type Locale, withLocale, withoutLocale } from "@/lib/i18n";
 import { switchLinktree } from "./actions";
+import { cssUrl } from "@/lib/css-url";
 
 type Linktree = { id: string; name: string; slug: string | null; avatar_url?: string | null };
 type Icon = Parameters<typeof DashboardIcon>[0]["name"];
@@ -20,7 +21,7 @@ const items: { href: string; label: string; short: string; icon: Icon; mobile: b
 ];
 
 function Avatar({ tree }: { tree: Linktree }) {
-  return tree.avatar_url ? <span className="lh-ava" style={{ backgroundImage: `url(${tree.avatar_url})` }} aria-hidden="true" /> : <span className="lh-ava" aria-hidden="true">{tree.name.slice(0, 1).toUpperCase() || "L"}</span>;
+  return tree.avatar_url ? <span className="lh-ava" style={{ backgroundImage: cssUrl(tree.avatar_url) }} aria-hidden="true" /> : <span className="lh-ava" aria-hidden="true">{tree.name.slice(0, 1).toUpperCase() || "L"}</span>;
 }
 
 // Menu Linktree aktif: ganti Linktree, buat baru, akun, admin, keluar. Dipakai di sidebar desktop dan bar atas HP.

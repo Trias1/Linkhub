@@ -28,3 +28,12 @@ export function detectPlatform(value: string): CommercePlatform | "website" {
 
 export const platformLabel = (value: string | null | undefined) => isCommercePlatform(value) ? commercePlatforms[value].label : "Website";
 export const platformColor = (value: string | null | undefined) => isCommercePlatform(value) ? commercePlatforms[value].color : "#171712";
+
+// Warna tombol "Buy": warna toko, digelapkan secukupnya supaya teks putih kontrasnya minimal 4,5:1 (WCAG AA).
+const channel = (value: number) => { const c = value / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+const whiteContrast = (rgb: number[]) => 1.05 / (0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2]) + 0.05);
+export function buyColor(value: string | null | undefined) {
+  let rgb = [1, 3, 5].map((start) => parseInt(platformColor(value).slice(start, start + 2), 16));
+  for (let step = 0; step < 20 && whiteContrast(rgb) < 4.6; step++) rgb = rgb.map((part) => Math.round(part * 0.94));
+  return `#${rgb.map((part) => part.toString(16).padStart(2, "0")).join("")}`;
+}

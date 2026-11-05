@@ -7,7 +7,7 @@ import { getDashboardContext, needsMfaCode } from "@/lib/active-linktree";
 import { createClient } from "@/lib/supabase/server";
 import { priceDigits } from "@/lib/rupiah";
 import { detectPlatform, isCommercePlatform } from "@/lib/commerce-platforms";
-import { linkPlatform, normalizeLink } from "@/lib/link-platform";
+import { extractLink, linkPlatform } from "@/lib/link-platform";
 import { slugProblem } from "@/lib/slug";
 import { isUuid, rateLimit } from "@/lib/security";
 import { downloadProductImage, readProductDetails, type LookupFailure, type ProductDetails } from "@/lib/product-details";
@@ -69,6 +69,12 @@ export async function fetchProductDetails(url: string): Promise<{ details: Produ
   return { details: null, error: reasons[result] };
 }
 
+// Posisi item baru = posisi tertinggi + 1 (bukan jumlah item: setelah ada yang dihapus, jumlah bisa kembar).
+async function nextPosition(supabase: Awaited<ReturnType<typeof createClient>>, table: "links" | "link_collections" | "shop_collections" | "products", column: "linktree_id" | "collection_id", value: string) {
+  const { data } = await supabase.from(table).select("position").eq(column, value).order("position", { ascending: false }).limit(1).maybeSingle();
+  return (data?.position ?? -1) + 1;
+}
+
 // Pesan database mentah tidak ditampilkan ke user.
 function friendlyError(error: { code?: string; message: string }) {
   if (error.code === "23505") return "That is already taken. Try another page address.";
@@ -89,12 +95,17 @@ export async function saveAccount(formData: FormData) {
   const slug = String(formData.get("slug") ?? "").trim().toLowerCase();
   const slugError = slugProblem(slug);
   if (slugError) redirect(`/dashboard/account?error=${encodeURIComponent(slugError)}`);
-  const photo = String(formData.get("avatar_url") ?? "").trim();
-  if (photo) {
-    try { if (!["http:", "https:"].includes(new URL(photo).protocol)) throw new Error(); }
-    catch { redirect("/dashboard/account?error=Photo URL must start with http or https"); }
+  // Foto: hanya https, disimpan dalam bentuk yang sudah dinormalisasi (tidak ada spasi/tanda kurung mentah).
+  const rawPhoto = String(formData.get("avatar_url") ?? "").trim();
+  let photo = "";
+  if (rawPhoto) {
+    try { const url = new URL(rawPhoto); if (url.protocol !== "https:" || url.href.length > 1000) throw new Error(); photo = url.href; }
+    catch { redirect("/dashboard/account?error=Photo URL must be a full https:// link"); }
   }
-  const { error } = await supabase.from("linktrees").update({ name: String(formData.get("name") ?? "").trim().slice(0, 60), slug, avatar_url: photo || null }).eq("id", linktree.id).eq("owner_id", user.id);
+  const name = String(formData.get("name") ?? "").trim().slice(0, 60);
+  const { error } = await supabase.from("linktrees").update({ name, slug, avatar_url: photo || null }).eq("id", linktree.id).eq("owner_id", user.id);
+  // Satu nama halaman: judul di halaman publik (Design) ikut nama ini.
+  if (!error && name) await supabase.from("linktree_headers").upsert({ linktree_id: linktree.id, title: name });
   if (error) redirect(`/dashboard/account?error=${encodeURIComponent(friendlyError(error))}`);
   revalidatePath("/dashboard", "layout");
   revalidatePath(`/${slug}`);
@@ -102,7 +113,7 @@ export async function saveAccount(formData: FormData) {
 }
 
 function linkUrl(value: FormDataEntryValue | null) {
-  try { return validUrl(normalizeLink(String(value ?? ""))); } catch { redirect("/dashboard/links?error=Enter a full link, e.g. https://github.com/name, or an email address"); }
+  try { return validUrl(extractLink(String(value ?? ""))); } catch { redirect("/dashboard/links?error=Enter a full link, e.g. https://github.com/name, or an email address"); }
 }
 
 export async function addLink(formData: FormData) {
@@ -115,8 +126,8 @@ export async function addLink(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim().slice(0, 80);
   if (!title) redirect("/dashboard/links?error=Give the link a title");
   const url = linkUrl(formData.get("url"));
-  const { count } = await supabase.from("links").select("id", { count: "exact", head: true }).eq("linktree_id", linktree.id);
-  const { error } = await supabase.from("links").insert({ user_id: user.id, linktree_id: linktree.id, collection_id: collectionId, title, url, platform: linkPlatform(url), position: count ?? 0 });
+  const position = await nextPosition(supabase, "links", "linktree_id", linktree.id);
+  const { error } = await supabase.from("links").insert({ user_id: user.id, linktree_id: linktree.id, collection_id: collectionId, title, url, platform: linkPlatform(url), position });
   if (error) redirect(`/dashboard/links?error=${encodeURIComponent(friendlyError(error))}`);
   revalidatePath("/dashboard/links");
   redirect("/dashboard/links?message=Link added");
@@ -167,8 +178,8 @@ export async function deleteLink(formData: FormData) {
 }
 export async function addCollection() {
   const { supabase, user, linktree } = await authenticatedClient();
-  const { count } = await supabase.from("link_collections").select("id", { count: "exact", head: true }).eq("linktree_id", linktree.id);
-  const { error } = await supabase.from("link_collections").insert({ user_id: user.id, linktree_id: linktree.id, title: "New group", position: count ?? 0 });
+  const position = await nextPosition(supabase, "link_collections", "linktree_id", linktree.id);
+  const { error } = await supabase.from("link_collections").insert({ user_id: user.id, linktree_id: linktree.id, title: "New group", position });
   if (error) redirect(`/dashboard/links?error=${encodeURIComponent(friendlyError(error))}`);
   revalidatePath("/dashboard/links");
   redirect("/dashboard/links?message=Group added. Rename it below.");
@@ -196,8 +207,8 @@ export async function reorderCollections(ids: string[]) {
 }
 export async function addShopCollection() {
   const { supabase, user, linktree } = await authenticatedClient();
-  const { count } = await supabase.from("shop_collections").select("id", { count: "exact", head: true }).eq("linktree_id", linktree.id);
-  const { error } = await supabase.from("shop_collections").insert({ user_id: user.id, linktree_id: linktree.id, title: "My Products", position: count ?? 0 });
+  const position = await nextPosition(supabase, "shop_collections", "linktree_id", linktree.id);
+  const { error } = await supabase.from("shop_collections").insert({ user_id: user.id, linktree_id: linktree.id, title: "My Products", position });
   if (error) redirect(`/dashboard/shops?error=${encodeURIComponent(friendlyError(error))}`);
   revalidatePath("/dashboard/shops");
   redirect("/dashboard/shops");
@@ -214,7 +225,26 @@ export async function updateShopCollection(formData: FormData) {
 
 export async function deleteShopCollection(formData: FormData) {
   const { supabase, linktree } = await authenticatedClient();
-  await supabase.from("shop_collections").delete().eq("id", String(formData.get("id") ?? "")).eq("linktree_id", linktree.id);
+  const id = String(formData.get("id") ?? "");
+  if (!isUuid(id)) return;
+  // Produknya ikut terhapus (cascade); fotonya harus dihapus sendiri dari storage.
+  const { data: products } = await supabase.from("products").select("image_path").eq("collection_id", id).eq("linktree_id", linktree.id);
+  const { error } = await supabase.from("shop_collections").delete().eq("id", id).eq("linktree_id", linktree.id);
+  const paths = (products ?? []).map((item) => item.image_path).filter((path): path is string => Boolean(path));
+  if (!error && paths.length) await supabase.storage.from("product-images").remove(paths);
+  revalidatePath("/dashboard/shops");
+}
+
+// Kategori naik/turun satu langkah; urutan ini juga dipakai di halaman publik.
+export async function moveShopCollection(id: string, direction: -1 | 1) {
+  const { supabase, linktree } = await authenticatedClient();
+  if (!isUuid(id)) return;
+  const { data: rows } = await supabase.from("shop_collections").select("id").eq("linktree_id", linktree.id).order("position").order("created_at");
+  const order = (rows ?? []).map((item) => item.id);
+  const from = order.indexOf(id); const to = from + direction;
+  if (from < 0 || to < 0 || to >= order.length) return;
+  [order[from], order[to]] = [order[to], order[from]];
+  await Promise.all(order.map((itemId, position) => supabase.from("shop_collections").update({ position }).eq("id", itemId).eq("linktree_id", linktree.id)));
   revalidatePath("/dashboard/shops");
 }
 
@@ -229,7 +259,8 @@ function wibDate(value: FormDataEntryValue | null, endOfDay = false) {
 }
 
 function productFields(formData: FormData) {
-  const url = validUrl(formData.get("url"));
+  let url = "";
+  try { url = validUrl(extractLink(String(formData.get("url") ?? ""))); } catch { redirect("/dashboard/shops?error=Enter a product link that starts with https://"); }
   const chosen = String(formData.get("platform") ?? "auto");
   const platform = chosen === "auto" ? detectPlatform(url) : chosen === "website" || isCommercePlatform(chosen) ? chosen : "website";
   const startsAt = wibDate(formData.get("starts_at"));
@@ -252,8 +283,8 @@ export async function addProduct(formData: FormData) {
   const collectionId = await ownedShopCollection(supabase, linktree.id, formData.get("collection_id"));
   const fields = productFields(formData);
   const image = (await uploadProductImage(supabase, user.id, formData.get("image"))) ?? (await importProductImage(supabase, user.id, formData.get("image_source")));
-  const { count } = await supabase.from("products").select("id", { count: "exact", head: true }).eq("collection_id", collectionId);
-  const { error } = await supabase.from("products").insert({ user_id: user.id, linktree_id: linktree.id, collection_id: collectionId, ...fields, image_path: image?.path ?? null, image_url: image?.url ?? null, position: count ?? 0 });
+  const position = await nextPosition(supabase, "products", "collection_id", collectionId);
+  const { error } = await supabase.from("products").insert({ user_id: user.id, linktree_id: linktree.id, collection_id: collectionId, ...fields, image_path: image?.path ?? null, image_url: image?.url ?? null, position });
   if (error) {
     if (image) await supabase.storage.from("product-images").remove([image.path]);
     redirect(`/dashboard/shops?error=${encodeURIComponent(friendlyError(error))}`);
@@ -265,12 +296,14 @@ export async function addProduct(formData: FormData) {
 export async function updateProduct(formData: FormData) {
   const { supabase, user, linktree } = await authenticatedClient();
   const id = String(formData.get("id") ?? "");
-  const { data: current } = isUuid(id) ? await supabase.from("products").select("image_path").eq("id", id).eq("linktree_id", linktree.id).maybeSingle() : { data: null };
+  const { data: current } = isUuid(id) ? await supabase.from("products").select("image_path,collection_id").eq("id", id).eq("linktree_id", linktree.id).maybeSingle() : { data: null };
   if (!current) redirect("/dashboard/shops?error=Product not found");
   const collectionId = await ownedShopCollection(supabase, linktree.id, formData.get("collection_id"));
   const fields = productFields(formData);
   const image = (await uploadProductImage(supabase, user.id, formData.get("image"))) ?? (await importProductImage(supabase, user.id, formData.get("image_source")));
-  const changes: Record<string, string | boolean | null> = { ...fields, collection_id: collectionId, is_active: formData.get("is_active") === "on" };
+  const changes: Record<string, string | number | boolean | null> = { ...fields, collection_id: collectionId, is_active: formData.get("is_active") === "on" };
+  // Pindah kategori: taruh di urutan terakhir kategori barunya.
+  if (collectionId !== current.collection_id) changes.position = await nextPosition(supabase, "products", "collection_id", collectionId);
   if (image) { changes.image_path = image.path; changes.image_url = image.url; }
   const { error } = await supabase.from("products").update(changes).eq("id", id).eq("linktree_id", linktree.id);
   if (error) {
@@ -347,7 +380,7 @@ export async function saveCustomDesign(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim().slice(0, 60);
   if (!title) redirect("/dashboard/design?error=Title is required");
   const [{ error }, { error: headerError }] = await Promise.all([
-    supabase.from("linktrees").update(changes).eq("id", linktree.id).eq("owner_id", user.id),
+    supabase.from("linktrees").update({ ...changes, name: title }).eq("id", linktree.id).eq("owner_id", user.id),
     supabase.from("linktree_headers").upsert({ linktree_id: linktree.id, title, bio: String(formData.get("bio") ?? "").trim().slice(0, 160) }),
   ]);
   if (error || headerError) redirect(`/dashboard/design?error=${encodeURIComponent(friendlyError((error || headerError)!))}`);
@@ -414,8 +447,11 @@ export async function deleteLinktreeAccount(formData: FormData) {
   await requireSensitiveAuth(supabase);
   if (linktrees.length <= 1) accountError("You cannot delete your last page. Delete the account to remove everything.");
   if (String(formData.get("confirmation") ?? "") !== linktree.slug) accountError("Type the page address exactly to delete it");
+  const { data: products } = await supabase.from("products").select("image_path").eq("linktree_id", linktree.id);
   const { error } = await supabase.from("linktrees").delete().eq("id", linktree.id).eq("owner_id", user.id);
   if (error) accountError(friendlyError(error));
+  const paths = (products ?? []).map((item) => item.image_path).filter((path): path is string => Boolean(path));
+  if (paths.length) await supabase.storage.from("product-images").remove(paths);
   (await cookies()).delete("active_linktree_id");
   redirect("/dashboard/links");
 }
@@ -428,8 +464,9 @@ export async function deleteAccount(formData: FormData) {
   const admin = createAdminClient();
   if (!admin) accountError("SUPABASE_SERVICE_ROLE_KEY is not set on the server");
   for (const bucket of ["profile-images", "product-images"]) {
-    for (let offset = 0; ; offset += 1000) {
-      const { data, error: listError } = await admin.storage.from(bucket).list(user.id, { limit: 1000, offset });
+    // Selalu ambil dari awal: file yang sudah dihapus hilang dari daftar, jadi offset akan melompati file.
+    for (let round = 0; round < 100; round++) {
+      const { data, error: listError } = await admin.storage.from(bucket).list(user.id, { limit: 1000 });
       if (listError) accountError("Could not delete files. Please try again.");
       if (!data?.length) break;
       const { error: removeError } = await admin.storage.from(bucket).remove(data.map((item) => `${user.id}/${item.name}`));

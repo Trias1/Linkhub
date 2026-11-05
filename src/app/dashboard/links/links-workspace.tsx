@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { PlatformIcon } from "@/components/platform-icon";
 import { isCommercePlatform } from "@/lib/commerce-platforms";
-import { iconPlatform, linkDomain, linkLabel, linkPlatform, normalizeLink, quickLinks, suggestedTitle } from "@/lib/link-platform";
+import { extractLink, iconPlatform, linkDomain, linkLabel, linkPlatform, normalizeLink, quickLinks, suggestedTitle } from "@/lib/link-platform";
 import { LinkIcon } from "@/components/link-icon";
 import { addCollection, addLink, deleteCollection, deleteLink, moveLink, reorderCollections, setLinkActive, updateCollection, updateLink } from "../actions";
 
@@ -19,7 +19,8 @@ function AddLinkForm({ groups }: { groups: Group[] }) {
   // Judul diisi otomatis dari link, tapi tidak menimpa judul yang diketik sendiri.
   const [autoTitle, setAutoTitle] = useState("");
   const detected = url ? linkPlatform(url) : null;
-  function changeUrl(value: string) {
+  function changeUrl(raw: string) {
+    const value = /\s/.test(raw.trim()) ? extractLink(raw) : raw;
     setUrl(value);
     if (title && title !== autoTitle) return;
     const next = suggestedTitle(value);
@@ -42,13 +43,13 @@ function LinkRow({ link, first, last }: { link: LinkItem; first: boolean; last: 
   const [pending, startTransition] = useTransition();
   return <li className={`lh-item${pending ? " pending" : ""}`}>
     <div className="lh-link-row">
-      <div className="lh-order"><button type="button" aria-label="Move up" disabled={first || pending} onClick={() => startTransition(() => moveLink(link.id, -1))}><Chevron up /></button><button type="button" aria-label="Move down" disabled={last || pending} onClick={() => startTransition(() => moveLink(link.id, 1))}><Chevron /></button></div>
+      <div className="lh-order"><button type="button" aria-label={`Move ${link.title} up`} disabled={first || pending} onClick={() => startTransition(() => moveLink(link.id, -1))}><Chevron up /></button><button type="button" aria-label={`Move ${link.title} down`} disabled={last || pending} onClick={() => startTransition(() => moveLink(link.id, 1))}><Chevron /></button></div>
       <span className="lh-item-thumb lh-link-icon"><LinkIcon platform={iconPlatform(link)} domain={linkDomain(link.url)} size={20} /></span>
       <button type="button" className="lh-item-main" onClick={() => setEditing(!editing)} aria-expanded={editing}>
         <b>{link.title}</b>
         <span>{isCommercePlatform(link.platform) ? <em className="lh-tag">Store button</em> : null}{shortUrl(link.url)}</span>
       </button>
-      <button type="button" className="lh-switch" role="switch" aria-checked={link.is_active} aria-label="Visible on my page" disabled={pending} onClick={() => startTransition(() => setLinkActive(link.id, !link.is_active))} />
+      <button type="button" className="lh-switch" role="switch" aria-checked={link.is_active} aria-label={`Show ${link.title} on my page`} disabled={pending} onClick={() => startTransition(() => setLinkActive(link.id, !link.is_active))} />
     </div>
     {editing ? <form action={updateLink} className="lh-link-edit">
       <input type="hidden" name="id" value={link.id} />

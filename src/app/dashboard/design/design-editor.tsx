@@ -5,6 +5,8 @@ import { PlatformIcon } from "@/components/platform-icon";
 import { profileStyle } from "@/lib/profile-style";
 import { themes } from "@/lib/themes";
 import { saveCustomDesign } from "../actions";
+import { cssUrl } from "@/lib/css-url";
+import { buyColor } from "@/lib/commerce-platforms";
 
 export type Design = {
   title: string; bio: string; avatar_url: string | null;
@@ -22,7 +24,8 @@ const presets = [
 ];
 
 function Choice({ name, value, options, onChange }: { name: string; value: string; options: string[][]; onChange: (value: string) => void }) {
-  return <div className="lh-seg" role="radiogroup">{options.map(([option, label]) => <label key={option}><input type="radio" name={name} value={option} checked={value === option} onChange={() => onChange(option)} /><span>{label}</span></label>)}</div>;
+  const labels: Record<string, string> = { title_style: "Name style", wallpaper_style: "Background style", button_style: "Button style", button_roundness: "Button corners" };
+  return <div className="lh-seg" role="radiogroup" aria-label={labels[name] ?? name}>{options.map(([option, label]) => <label key={option}><input type="radio" name={name} value={option} checked={value === option} onChange={() => onChange(option)} /><span>{label}</span></label>)}</div>;
 }
 
 function Color({ label, name, value, onChange }: { label: string; name?: string; value: string; onChange: (value: string) => void }) {
@@ -74,10 +77,10 @@ export function DesignEditor({ initial, error, message }: { initial: Design; err
 
     <aside className="lh-dash-aside">
       <div className="lh-phone"><div className={`lh-profile lh-mini font-${design.page_font}`} style={vars}><div className="lh-page">
-        <header className="lh-head">{design.avatar_url ? <span className="lh-avatar" style={{ backgroundImage: `url(${design.avatar_url})` }} /> : <span className="lh-avatar">{design.title.slice(0, 1).toUpperCase() || "L"}</span>}<h1 className={`title-${design.title_style}`}>{design.title || "Your name"}</h1>{design.bio ? <p>{design.bio}</p> : null}</header>
+        <header className="lh-head">{design.avatar_url ? <span className="lh-avatar" style={{ backgroundImage: cssUrl(design.avatar_url) }} /> : <span className="lh-avatar">{design.title.slice(0, 1).toUpperCase() || "L"}</span>}<h1 className={`title-${design.title_style}`}>{design.title || "Your name"}</h1>{design.bio ? <p>{design.bio}</p> : null}</header>
         <div className="lh-stores"><span className="lh-store"><span className="lh-mark" style={{ background: "#ee4d2d" }}><PlatformIcon platform="shopee" size={18} /></span><span><b>Shopee</b><small>My store</small></span></span><span className="lh-store"><span className="lh-mark" style={{ background: "#03ac0e" }}><PlatformIcon platform="tokopedia" size={18} /></span><span><b>Tokopedia</b><small>My store</small></span></span></div>
         <div className="lh-section-title"><h2>Products</h2></div>
-        <div className="lh-grid">{["Product name", "Another product"].map((name) => <div className="lh-card" key={name}><span className="lh-thumb" /><h3>{name}</h3><div className="lh-meta"><span className="lh-price">Rp99.000</span></div><span className="lh-buy" style={{ background: "#ee4d2d" }}>Buy on Shopee</span></div>)}</div>
+        <div className="lh-grid">{["Product name", "Another product"].map((name) => <div className="lh-card" key={name}><span className="lh-thumb" /><h3>{name}</h3><div className="lh-meta"><span className="lh-price">Rp99.000</span></div><span className="lh-buy" style={{ background: buyColor("shopee") }}>Buy on Shopee</span></div>)}</div>
         <div className="lh-links"><div className="lh-link-group"><h2>Contact</h2>{[["whatsapp", "Order on WhatsApp"], ["instagram", "Instagram"]].map(([platform, label]) => <span className={`lh-link button-${design.button_style} radius-${design.button_roundness}`} key={platform}><PlatformIcon platform={platform} /><span>{label}</span></span>)}</div></div>
         {design.custom_footer ? <p className="lh-note">{design.custom_footer}</p> : null}
       </div></div></div>

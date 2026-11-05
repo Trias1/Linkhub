@@ -29,8 +29,9 @@ export async function verifyTurnstile(token: FormDataEntryValue | string | null 
   return result?.success === true;
 }
 
-// Hanya path internal: "/x" boleh, "//evil.com" dan "/\evil.com" tidak.
-export const safeNextPath = (value: string | null | undefined, fallback = "/dashboard") => value && /^\/(?![/\\])/.test(value) ? value : fallback;
+// Hanya path internal: "/x" boleh; "//evil.com", "/\evil.com" dan karakter kontrol (tab/newline, dibuang oleh
+// parser URL sehingga "/\t/evil.com" jadi "//evil.com") tidak.
+export const safeNextPath = (value: string | null | undefined, fallback = "/dashboard") => value && /^\/(?![/\\])[^\u0000-\u001f\\]*$/.test(value) ? value : fallback;
 
 // Nilai CSV yang diawali = + - @ tab/CR dianggap formula oleh Excel/Sheets.
 export const csvCell = (value: unknown) => {

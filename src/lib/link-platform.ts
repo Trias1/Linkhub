@@ -28,6 +28,12 @@ export function normalizeLink(value: string) {
   return text;
 }
 
+// Teks share dari aplikasi marketplace ("Cek produk ini... https://...") -> ambil link pertamanya.
+export function extractLink(value: string) {
+  const found = value.match(/https?:\/\/[^\s"'<>]+/i)?.[0];
+  return found ? found.replace(/[).,!?]+$/, "") : normalizeLink(value);
+}
+
 export function linkPlatform(value: string) {
   let url: URL;
   try { url = new URL(normalizeLink(value)); } catch { return "website"; }

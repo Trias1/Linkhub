@@ -4,10 +4,13 @@ import { useRef, useState, useTransition } from "react";
 import { PlatformIcon } from "@/components/platform-icon";
 import { formatRupiah } from "@/lib/rupiah";
 import { commercePlatforms, detectPlatform, platformColor, platformLabel } from "@/lib/commerce-platforms";
+import { extractLink } from "@/lib/link-platform";
 import { dateInputValue, formatEndDate, formatStartDate, productStatus, type Product, type ProductStatus } from "@/lib/products";
 import type { ProductDetails } from "@/lib/product-details";
+import { MAX_UPLOAD, shrinkImage } from "@/lib/shrink-image";
 import { RupiahInput } from "./rupiah-input";
-import { addProduct, addShopCollection, deleteProduct, fetchProductDetails, deleteShopCollection, moveProduct, setProductActive, updateProduct, updateShopCollection } from "../actions";
+import { addProduct, addShopCollection, deleteProduct, fetchProductDetails, deleteShopCollection, moveProduct, moveShopCollection, setProductActive, updateProduct, updateShopCollection } from "../actions";
+import { cssUrl } from "@/lib/css-url";
 
 type Category = { id: string; title: string; position: number };
 const statusLabel: Record<ProductStatus, string> = { live: "Live", scheduled: "Scheduled", ended: "Ended", hidden: "Hidden" };
@@ -23,6 +26,18 @@ function ProductForm({ categories, product, onCancel }: { categories: Category[]
   const [fillKey, setFillKey] = useState(0);
   const [lookup, setLookup] = useState<{ busy: boolean; text: string }>({ busy: false, text: "" });
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Foto dikecilkan di browser dulu (batas upload Vercel 4,5 MB); pratinjaunya dari file yang dipilih.
+  const [photo, setPhoto] = useState<{ url: string | null; busy: boolean; note: string }>({ url: null, busy: false, note: "" });
+  async function pickPhoto(input: HTMLInputElement) {
+    const file = input.files?.[0];
+    if (!file) return;
+    setPhoto((current) => ({ ...current, busy: true, note: "Preparing photo…" }));
+    const small = await shrinkImage(file);
+    if (small.size > MAX_UPLOAD) { input.value = ""; setPhoto({ url: null, busy: false, note: "This photo is too big. Pick a smaller one." }); return; }
+    if (small !== file) { const list = new DataTransfer(); list.items.add(small); input.files = list.files; }
+    setPhoto((current) => { if (current.url) URL.revokeObjectURL(current.url); return { url: URL.createObjectURL(small), busy: false, note: "" }; });
+  }
+  const preview = photo.url || filled?.image || product?.image_url;
   const lastLookup = useRef("");
   async function fillFromLink(link: string) {
     lastLookup.current = link;
@@ -32,7 +47,9 @@ function ProductForm({ categories, product, onCancel }: { categories: Category[]
     if (result.details) { setFilled(result.details); setFillKey((key) => key + 1); setOpen(true); }
     setLookup({ busy: false, text: !result.details ? result.error ?? "" : result.details.pricesSkipped ? "Name and photo filled in. Enter the price by hand: this store shows LinkHub a different price than buyers see." : "Filled in from the link. Check the details before saving." });
   }
-  function changeUrl(value: string) {
+  function changeUrl(raw: string) {
+    // Teks share dari aplikasi marketplace ("Cek produk ini... https://...") -> ambil link-nya saja.
+    const value = /\s/.test(raw.trim()) ? extractLink(raw) : raw;
     setUrl(value); if (value) setOpen(true);
     if (timer.current) clearTimeout(timer.current);
     const store = /^https:\/\/\S+$/.test(value) ? detectPlatform(value) : "website";
@@ -49,7 +66,7 @@ function ProductForm({ categories, product, onCancel }: { categories: Category[]
     <p className="lh-detect" aria-live="polite">{detected ? detected === "website" ? "Other store. The button will say “View product”." : <><i style={{ background: platformColor(detected) }} /><b>{platformLabel(detected)}</b> detected. The button will say &ldquo;Buy on {platformLabel(detected)}&rdquo;.</> : "Supports Shopee, Tokopedia, TikTok Shop, Lazada, Facebook and more."}</p>
     {canFill ? <p className="lh-fill" aria-live="polite"><span>{lookup.text}</span><button type="button" className="lh-linkbtn" disabled={lookup.busy} onClick={() => void fillFromLink(url)}>{lookup.busy ? "Reading…" : "Fill in from link"}</button></p> : null}
     {open ? <div className="lh-form-grid">
-      <label className="lh-photo">{filled?.image || product?.image_url ? <span style={{ backgroundImage: `url(${filled?.image || product?.image_url})` }} /> : <span>Photo<br />JPG, PNG, WebP<br />max 5 MB</span>}<input name="image" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Product photo" />{filled?.image ? <input type="hidden" name="image_source" value={filled.image} /> : null}</label>
+      <label className="lh-photo">{preview ? <span style={{ backgroundImage: cssUrl(preview) }} /> : <span>Photo<br />JPG, PNG, WebP<br />resized for you</span>}<input name="image" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Product photo" onChange={(event) => void pickPhoto(event.currentTarget)} />{filled?.image && !photo.url ? <input type="hidden" name="image_source" value={filled.image} /> : null}{photo.note ? <small className="lh-photo-note" role="status">{photo.note}</small> : null}</label>
       <label className="lh-field lh-wide">Product name<input key={`title-${fillKey}`} name="title" required maxLength={100} defaultValue={filled?.title || product?.title} placeholder="e.g. 2-tier rotating spice rack" /></label>
       <RupiahInput key={`price-${fillKey}`} defaultValue={filled?.price || product?.price} />
       <RupiahInput key={`compare-${fillKey}`} name="compare_price" label="Original price" hint="Optional, shown crossed out" defaultValue={filled ? filled.comparePrice : product?.compare_price} />
@@ -63,7 +80,7 @@ function ProductForm({ categories, product, onCancel }: { categories: Category[]
         {product ? <button className="lh-btn secondary small lh-danger" formAction={deleteProduct} formNoValidate onClick={(event) => { if (!confirm("Delete this product?")) event.preventDefault(); }}>Delete</button> : null}
         <span />
         <button type="button" className="lh-btn secondary small" onClick={() => { if (onCancel) onCancel(); else { setOpen(false); setUrl(""); setFilled(null); setLookup({ busy: false, text: "" }); lastLookup.current = ""; } }}>Cancel</button>
-        <button className="lh-btn small">{product ? "Save" : "Save product"}</button>
+        <button className="lh-btn small" disabled={photo.busy}>{product ? "Save" : "Save product"}</button>
       </div>
     </div> : null}
   </form>;
@@ -76,15 +93,15 @@ function ProductRow({ product, categories, clicks, first, last }: { product: Pro
   const when = status === "scheduled" && product.starts_at ? `from ${formatStartDate(product.starts_at, "en")}` : product.ends_at ? `${status === "ended" ? "ended" : "until"} ${formatEndDate(product.ends_at, "en")}` : "";
   return <li className={`lh-item${pending ? " pending" : ""}`}>
     <div className="lh-item-row">
-      <div className="lh-order"><button type="button" aria-label="Move up" disabled={first || pending} onClick={() => startTransition(() => moveProduct(product.id, -1))}><Chevron up /></button><button type="button" aria-label="Move down" disabled={last || pending} onClick={() => startTransition(() => moveProduct(product.id, 1))}><Chevron /></button></div>
-      {product.image_url ? <span className="lh-item-thumb" style={{ backgroundImage: `url(${product.image_url})` }} /> : <span className="lh-item-thumb"><PlatformIcon platform={product.platform} /></span>}
+      <div className="lh-order"><button type="button" aria-label={`Move ${product.title} up`} disabled={first || pending} onClick={() => startTransition(() => moveProduct(product.id, -1))}><Chevron up /></button><button type="button" aria-label={`Move ${product.title} down`} disabled={last || pending} onClick={() => startTransition(() => moveProduct(product.id, 1))}><Chevron /></button></div>
+      {product.image_url ? <span className="lh-item-thumb" style={{ backgroundImage: cssUrl(product.image_url) }} /> : <span className="lh-item-thumb"><PlatformIcon platform={product.platform} /></span>}
       <button type="button" className="lh-item-main" onClick={() => setEditing(!editing)} aria-expanded={editing}>
         <b>{product.title}</b>
         <span><i style={{ background: platformColor(product.platform) }} />{platformLabel(product.platform)}{product.price ? ` · ${formatRupiah(product.price)}` : ""}{when ? ` · ${when}` : ""}</span>
       </button>
       <span className={`lh-status ${product.is_featured && status === "live" ? "promo" : status}`}>{product.is_featured && status === "live" ? "On sale" : statusLabel[status]}</span>
       <span className="lh-clicks">{clicks === null ? "–" : <><b>{clicks}</b>clicks</>}</span>
-      <button type="button" className="lh-switch" role="switch" aria-checked={product.is_active} aria-label="Visible on my page" disabled={pending} onClick={() => startTransition(() => setProductActive(product.id, !product.is_active))} />
+      <button type="button" className="lh-switch" role="switch" aria-checked={product.is_active} aria-label={`Show ${product.title} on my page`} disabled={pending} onClick={() => startTransition(() => setProductActive(product.id, !product.is_active))} />
     </div>
     {editing ? <ProductForm categories={categories} product={product} onCancel={() => setEditing(false)} /> : null}
   </li>;
@@ -92,6 +109,9 @@ function ProductRow({ product, categories, clicks, first, last }: { product: Pro
 
 export function ProductsWorkspace({ slug, error, message, collections, products, clicksByProduct, clicksByPlatform, statsReady }: { slug: string | null; error?: string; message?: string; collections: Category[]; products: Product[]; clicksByProduct: Record<string, number>; clicksByPlatform: Record<string, number>; statsReady: boolean }) {
   const [filter, setFilter] = useState<"all" | ProductStatus>("all");
+  const [movingCategory, startCategoryMove] = useTransition();
+  // Pratinjau dimuat ulang setiap isi produk/kategori berubah (bukan hanya jumlahnya).
+  const previewKey = JSON.stringify([products, collections]).length + ":" + [...JSON.stringify([products, collections])].reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) | 0, 0);
   const statuses = products.map((item) => productStatus(item));
   const count = (status: ProductStatus) => statuses.filter((item) => item === status).length;
   const totalClicks = Object.values(clicksByPlatform).reduce((sum, value) => sum + value, 0);
@@ -132,7 +152,7 @@ export function ProductsWorkspace({ slug, error, message, collections, products,
         </div>
         {collections.map((category) => { const items = sorted.filter((item) => item.collection_id === category.id); const shown = items.filter((item) => filter === "all" || productStatus(item) === filter); return filter !== "all" && !shown.length ? null : <div className="lh-group" key={category.id}>
           <h3>{category.title} <span>{items.length}</span></h3>
-          {shown.length ? <ul className="lh-items">{shown.map((item) => <ProductRow key={JSON.stringify(item)} product={item} categories={collections} clicks={statsReady ? clicksByProduct[item.id] ?? 0 : null} first={items[0].id === item.id} last={items[items.length - 1].id === item.id} />)}</ul> : <p className="lh-hint">No products in this category yet.</p>}
+          {shown.length ? <ul className="lh-items">{shown.map((item) => <ProductRow key={JSON.stringify(item)} product={item} categories={collections} clicks={statsReady ? clicksByProduct[item.id] ?? 0 : null} first={filter !== "all" || items[0].id === item.id} last={filter !== "all" || items[items.length - 1].id === item.id} />)}</ul> : <p className="lh-hint">No products in this category yet.</p>}
         </div>; })}
         {!products.length && collections.length ? <p className="lh-hint">Paste your first product link above.</p> : null}
       </section>
@@ -140,13 +160,13 @@ export function ProductsWorkspace({ slug, error, message, collections, products,
       {collections.length ? <section className="lh-box">
         <h2>Categories</h2>
         <p className="lh-hint">Shown as filter buttons on your page when you have more than one.</p>
-        <ul className="lh-categories">{collections.map((category) => <li key={category.id}><form action={updateShopCollection}><input type="hidden" name="id" value={category.id} /><input name="title" defaultValue={category.title} maxLength={80} aria-label="Category name" required /><button className="lh-btn secondary small">Rename</button></form><form action={deleteShopCollection} onSubmit={(event) => { if (!confirm("Delete this category and all of its products?")) event.preventDefault(); }}><input type="hidden" name="id" value={category.id} /><button className="lh-btn secondary small lh-danger">Delete</button></form></li>)}</ul>
+        <ul className="lh-categories">{collections.map((category, index) => <li key={category.id}><div className="lh-order"><button type="button" aria-label={`Move ${category.title} up`} disabled={index === 0 || movingCategory} onClick={() => startCategoryMove(() => moveShopCollection(category.id, -1))}><Chevron up /></button><button type="button" aria-label={`Move ${category.title} down`} disabled={index === collections.length - 1 || movingCategory} onClick={() => startCategoryMove(() => moveShopCollection(category.id, 1))}><Chevron /></button></div><form action={updateShopCollection}><input type="hidden" name="id" value={category.id} /><input name="title" defaultValue={category.title} maxLength={80} aria-label="Category name" required /><button className="lh-btn secondary small">Rename</button></form><form action={deleteShopCollection} onSubmit={(event) => { if (!confirm("Delete this category and all of its products?")) event.preventDefault(); }}><input type="hidden" name="id" value={category.id} /><button className="lh-btn secondary small lh-danger">Delete</button></form></li>)}</ul>
         <form action={addShopCollection}><button className="lh-btn secondary small">+ Add category</button></form>
       </section> : null}
     </div>
 
     <aside className="lh-dash-aside">
-      {pageUrl ? <><div className="lh-phone"><iframe src={`${pageUrl}?preview=1`} title="Preview of your public page" tabIndex={-1} loading="lazy" /></div><p className="lh-hint lh-center">Live preview. Refreshes after you save.</p></> : <p className="lh-hint">Set a page address in Account to see a preview.</p>}
+      {pageUrl ? <><div className="lh-phone"><iframe key={previewKey} src={`${pageUrl}?preview=1`} title="Preview of your public page" tabIndex={-1} loading="lazy" /></div><p className="lh-hint lh-center">Live preview. Refreshes after you save.</p></> : <p className="lh-hint">Set a page address in Account to see a preview.</p>}
     </aside>
   </div>;
 }

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PlatformIcon } from "@/components/platform-icon";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { HeroSecondaryLink } from "@/components/account-links";
-import { platformColor, platformLabel } from "@/lib/commerce-platforms";
+import { platformColor, platformLabel, buyColor } from "@/lib/commerce-platforms";
 import { profileStyle } from "@/lib/profile-style";
 
 export const metadata: Metadata = {
@@ -34,10 +34,10 @@ function ExamplePage() {
     <div className="lh-featured"><span className="lh-thumb"><Icon d={hijabIcon} size={40} /></span><div>
       <span className="lh-flag">-40%</span><h3>Voile square hijab, set of 3</h3>
       <span className="lh-price">Rp59.000<s>Rp99.000</s></span><p className="lh-until">Until 11 Nov</p>
-      <span className="lh-buy" style={{ background: platformColor("tiktok-shop") }}>Buy on TikTok Shop</span>
+      <span className="lh-buy" style={{ background: buyColor("tiktok-shop") }}>Buy on TikTok Shop</span>
     </div></div>
     <div className="lh-section-title"><h2>Products</h2><span>{products.length} products</span></div>
-    <div className="lh-grid">{products.map((item) => <div className="lh-card" key={item.title}><span className="lh-thumb"><Icon d={item.icon} /></span><h3>{item.title}</h3><div className="lh-meta"><span className="lh-price">{item.price}</span></div><span className="lh-buy" style={{ background: platformColor(item.platform) }}>Buy on {platformLabel(item.platform)}</span></div>)}</div>
+    <div className="lh-grid">{products.map((item) => <div className="lh-card" key={item.title}><span className="lh-thumb"><Icon d={item.icon} /></span><h3>{item.title}</h3><div className="lh-meta"><span className="lh-price">{item.price}</span></div><span className="lh-buy" style={{ background: buyColor(item.platform) }}>Buy on {platformLabel(item.platform)}</span></div>)}</div>
     <div className="lh-links"><div className="lh-link-group"><h2>Contact</h2><span className="lh-link button-solid radius-rounded"><PlatformIcon platform="whatsapp" /><span>Order on WhatsApp</span></span><span className="lh-link button-solid radius-rounded"><PlatformIcon platform="instagram" /><span>Instagram</span></span></div></div>
     <p className="lh-note">Prices and stock follow the destination store.</p>
   </div></div></div>;
@@ -91,7 +91,7 @@ export default function Home() {
         <div className="lh-land-wrap">
           <h2 id="get">What you get</h2>
           <dl className="lh-land-get">
-            <div><dt>Buy buttons per store</dt><dd><p>Every product has its own button in the store&rsquo;s colour, so buyers know where they are going. Your store links sit at the top of the page.</p><span className="lh-buy" style={{ maxWidth: 220, background: platformColor("shopee") }}>Buy on Shopee</span></dd></div>
+            <div><dt>Buy buttons per store</dt><dd><p>Every product has its own button in the store&rsquo;s colour, so buyers know where they are going. Your store links sit at the top of the page.</p><span className="lh-buy" style={{ maxWidth: 220, background: buyColor("shopee") }}>Buy on Shopee</span></dd></div>
             <div><dt>Clicks you can act on</dt><dd><p>See taps per product and per store for the last day, week or month. Export them as a spreadsheet if you want.</p>
               <div className="lh-land-bars" role="img" aria-label="Example: Shopee 186 buy clicks, TikTok Shop 121, Tokopedia 69">{storeBars.map(([platform, value]) => <div key={platform}><span>{platformLabel(platform)}</span><i><i style={{ width: `${(value / 240) * 100}%`, background: platformColor(platform) }} /></i><b>{value}</b></div>)}</div></dd></div>
             <div><dt>Promos with an end date</dt><dd><p>Mark a product as on sale with a start and end date. It moves to the top while the promo runs and disappears after.</p>
