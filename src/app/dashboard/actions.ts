@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { getDashboardContext } from "@/lib/active-linktree";
+import { getDashboardContext, needsMfaCode } from "@/lib/active-linktree";
 import { createClient } from "@/lib/supabase/server";
 import { priceDigits } from "@/lib/rupiah";
 import { detectPlatform, isCommercePlatform } from "@/lib/commerce-platforms";
@@ -394,8 +394,7 @@ function accountError(message: string): never {
 }
 
 async function requireSensitiveAuth(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (data?.nextLevel === "aal2" && data.currentLevel !== "aal2") redirect("/login/mfa?next=/dashboard/account");
+  if (await needsMfaCode(supabase)) redirect("/login/mfa?next=/dashboard/account");
 }
 
 export async function changePassword(formData: FormData) {
