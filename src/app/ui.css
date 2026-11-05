@@ -45,7 +45,7 @@
 .lh-search svg { position: absolute; left: .85rem; top: 50%; width: 18px; height: 18px; transform: translateY(-50%); fill: none; stroke: var(--lh-soft); stroke-width: 2; }
 .lh-search input { width: 100%; height: 46px; padding: 0 1rem 0 2.6rem; border-radius: 999px; border: 1px solid var(--lh-card-line); background: var(--lh-card); color: inherit; font: inherit; font-size: 16px; }
 .lh-chips { display: flex; gap: .4rem; overflow-x: auto; scrollbar-width: none; }
-.lh-chips button { flex: none; height: 34px; padding: 0 .9rem; border-radius: 999px; border: 1px solid var(--lh-card-line); background: var(--lh-card); color: inherit; font: inherit; font-size: .88rem; font-weight: 600; cursor: pointer; }
+.lh-chips button { flex: none; height: 40px; padding: 0 .9rem; border-radius: 999px; border: 1px solid var(--lh-card-line); background: var(--lh-card); color: inherit; font: inherit; font-size: .88rem; font-weight: 600; cursor: pointer; }
 .lh-chips button[aria-pressed="true"] { background: var(--profile-text); border-color: var(--profile-text); color: var(--profile-bg); }
 
 .lh-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem; }

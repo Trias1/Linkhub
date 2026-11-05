@@ -23,13 +23,15 @@ export default async function PublicProfile({ params, searchParams }: { params:P
   if(!profile) notFound();
   const [{data:header},{data:linkCollections},{data:links},{data:shopCollections},products]=await Promise.all([
     supabase.from("linktree_headers").select("title,bio").eq("linktree_id",profile.id).maybeSingle(),
-    supabase.from("link_collections").select("id,title").eq("linktree_id",profile.id).order("position"),
-    supabase.from("links").select("id,collection_id,title,platform,url").eq("linktree_id",profile.id).eq("is_active",true).order("position"),
-    supabase.from("shop_collections").select("id,title").eq("linktree_id",profile.id).order("position"),
+    supabase.from("link_collections").select("id,title").eq("linktree_id",profile.id).order("position").order("created_at"),
+    supabase.from("links").select("id,collection_id,title,platform,url").eq("linktree_id",profile.id).eq("is_active",true).order("position").order("created_at"),
+    supabase.from("shop_collections").select("id,title").eq("linktree_id",profile.id).order("position").order("created_at"),
     fetchProducts(supabase,profile.id,true),
   ]);
   // Pemilik bisa membaca produk terjadwal lewat RLS, jadi saring juga di sini.
-  const visible=liveProducts(products);
+  // Urutan di halaman publik sama dengan dashboard: per kategori (urutan kategori), lalu urutan produk di dalamnya.
+  const categoryOrder=new Map((shopCollections??[]).map((item,index)=>[item.id,index]));
+  const visible=liveProducts(products).sort((a,b)=>(categoryOrder.get(a.collection_id)??0)-(categoryOrder.get(b.collection_id)??0));
   const style=profileStyle(profile);
   return <main className={`lh-profile font-${profile.page_font}`} style={style}><PublicProfileContent track={preview!=="1"} locale={locale} profile={{id:profile.id,name:header?.title||profile.name,bio:header?.bio??profile.bio,avatar_url:profile.avatar_url,title_style:profile.title_style,button_style:profile.button_style,button_roundness:profile.button_roundness,custom_footer:profile.custom_footer}} linkCollections={linkCollections??[]} links={(links??[]).map(({url,...link})=>{const platform=iconPlatform({platform:link.platform,url});return {...link,platform,domain:platform==="website"?linkDomain(url):null};})} shopCollections={shopCollections??[]} products={visible.map(({id,collection_id,platform,title,price,image_url,compare_price,is_featured,ends_at})=>({id,collection_id,platform,title,price,image_url,compare_price,is_featured,ends_at}))}/></main>;
 }

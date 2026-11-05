@@ -5,9 +5,10 @@ import Link from "next/link";
 import { PlatformIcon } from "@/components/platform-icon";
 import { LinkIcon } from "@/components/link-icon";
 import { formatRupiah } from "@/lib/rupiah";
-import { isCommercePlatform, platformColor, platformLabel } from "@/lib/commerce-platforms";
+import { isCommercePlatform, platformColor, platformLabel, buyColor } from "@/lib/commerce-platforms";
 import { formatEndDate } from "@/lib/products";
 import type { Locale } from "@/lib/i18n";
+import { cssUrl } from "@/lib/css-url";
 
 type LinkCollection = { id: string; title: string };
 type LinkItem = { id: string; collection_id: string | null; title: string; platform: string | null; domain?: string | null };
@@ -21,7 +22,7 @@ const discount = (item: Product) => { const price = Number(item.price); const be
 function Arrow() { return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8" /></svg>; }
 
 function BuyButton({ item, en }: { item: Product; en: boolean }) {
-  return <a className="lh-buy" href={`/api/product/${item.id}`} target="_blank" rel="noopener noreferrer sponsored" style={{ background: platformColor(item.platform) }}>{buyLabel(item.platform, en)}<Arrow /></a>;
+  return <a className="lh-buy" href={`/api/product/${item.id}`} target="_blank" rel="noopener noreferrer sponsored" style={{ background: buyColor(item.platform) }}>{buyLabel(item.platform, en)}<Arrow /></a>;
 }
 
 function Price({ item }: { item: Product }) {
@@ -30,7 +31,7 @@ function Price({ item }: { item: Product }) {
 }
 
 function Thumb({ item }: { item: Product }) {
-  return item.image_url ? <span className="lh-thumb" role="img" aria-label={item.title} style={{ backgroundImage: `url(${item.image_url})` }} /> : <span className="lh-thumb lh-thumb-empty"><PlatformIcon platform={item.platform} size={28} /></span>;
+  return item.image_url ? <span className="lh-thumb" role="img" aria-label={item.title} style={{ backgroundImage: cssUrl(item.image_url) }} /> : <span className="lh-thumb lh-thumb-empty"><PlatformIcon platform={item.platform} size={28} /></span>;
 }
 
 export function PublicProfileContent({ profile, linkCollections, links, shopCollections, products, locale, track = true }: { locale:Locale; track?: boolean; profile: Profile; linkCollections: LinkCollection[]; links: LinkItem[]; shopCollections: ShopCollection[]; products: Product[] }) {
@@ -50,7 +51,7 @@ export function PublicProfileContent({ profile, linkCollections, links, shopColl
 
   return <div className="lh-page">
     <header className="lh-head">
-      {profile.avatar_url ? <span className="lh-avatar" role="img" aria-label={profile.name} style={{ backgroundImage: `url(${profile.avatar_url})` }} /> : <span className="lh-avatar" aria-hidden="true">{profile.name.slice(0, 1).toUpperCase() || "L"}</span>}
+      {profile.avatar_url ? <span className="lh-avatar" role="img" aria-label={profile.name} style={{ backgroundImage: cssUrl(profile.avatar_url) }} /> : <span className="lh-avatar" aria-hidden="true">{profile.name.slice(0, 1).toUpperCase() || "L"}</span>}
       <h1 className={`title-${profile.title_style}`}>{profile.name}</h1>
       {profile.bio ? <p>{profile.bio}</p> : null}
     </header>
