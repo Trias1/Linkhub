@@ -13,7 +13,7 @@ import { cssUrl } from "@/lib/css-url";
 type LinkCollection = { id: string; title: string };
 type LinkItem = { id: string; collection_id: string | null; title: string; platform: string | null; domain?: string | null };
 type ShopCollection = { id: string; title: string };
-type Product = { id: string; collection_id: string; platform: string; title: string; price: string; image_url: string | null; compare_price: string; is_featured: boolean; ends_at: string | null };
+type Product = { id: string; collection_id: string; platform: string; title: string; price: string; image_url: string | null; compare_price: string; is_featured: boolean; ends_at: string | null; number?: number | null };
 type Profile = { id:string; name: string; bio: string; avatar_url: string | null; title_style: string; button_style: string; button_roundness: string; custom_footer: string };
 
 const buyLabel = (platform: string, en: boolean) => isCommercePlatform(platform) ? `${en ? "Buy on" : "Beli di"} ${platformLabel(platform)}` : en ? "View product" : "Lihat produk";
@@ -34,10 +34,10 @@ function Thumb({ item }: { item: Product }) {
   return item.image_url ? <span className="lh-thumb" role="img" aria-label={item.title} style={{ backgroundImage: cssUrl(item.image_url) }} /> : <span className="lh-thumb lh-thumb-empty"><PlatformIcon platform={item.platform} size={28} /></span>;
 }
 
-export function PublicProfileContent({ profile, linkCollections, links, shopCollections, products, locale, track = true }: { locale:Locale; track?: boolean; profile: Profile; linkCollections: LinkCollection[]; links: LinkItem[]; shopCollections: ShopCollection[]; products: Product[] }) {
+export function PublicProfileContent({ profile, linkCollections, links, shopCollections, products, locale, track = true, initialSearch = "" }: { locale:Locale; track?: boolean; initialSearch?: string; profile: Profile; linkCollections: LinkCollection[]; links: LinkItem[]; shopCollections: ShopCollection[]; products: Product[] }) {
   const en = locale === "en";
   const [category, setCategory] = useState("all");
-  const [term, setTerm] = useState("");
+  const [term, setTerm] = useState(initialSearch);
   // Pratinjau di dashboard (?preview=1) tidak dihitung sebagai kunjungan.
   useEffect(() => { if (track) void fetch(`/api/view/${profile.id}`, { method: "POST" }); }, [profile.id, track]);
 
@@ -45,7 +45,8 @@ export function PublicProfileContent({ profile, linkCollections, links, shopColl
   const otherLinks = links.filter((item) => !isCommercePlatform(item.platform));
   const featured = products.filter((item) => item.is_featured).slice(0, 3);
   const categories = shopCollections.filter((collection) => products.some((item) => item.collection_id === collection.id));
-  const shown = useMemo(() => { const query = term.trim().toLowerCase(); return products.filter((item) => (category === "all" || item.collection_id === category) && (!query || item.title.toLowerCase().includes(query))); }, [products, category, term]);
+  const shown = useMemo(() => { const query = term.trim().toLowerCase(); const wanted = query.match(/^(?:#|no\.?\s*)?(\d{1,6})$/)?.[1]; return products.filter((item) => (category === "all" || item.collection_id === category) && (!query || (wanted ? item.number === Number(wanted) : item.title.toLowerCase().includes(query)))); }, [products, category, term]);
+  const numbered = products.some((item) => item.number);
   const linkGroups = [...linkCollections.map((collection) => ({ ...collection, items: otherLinks.filter((item) => item.collection_id === collection.id) })), { id: "none", title: "", items: otherLinks.filter((item) => !item.collection_id || !linkCollections.some((collection) => collection.id === item.collection_id)) }].filter((group) => group.items.length);
   const buttonClass = `lh-link button-${profile.button_style} radius-${profile.button_roundness}`;
 
@@ -71,17 +72,17 @@ export function PublicProfileContent({ profile, linkCollections, links, shopColl
 
     {products.length ? <section aria-labelledby="lh-products">
       <div className="lh-section-title"><h2 id="lh-products">{en ? "Products" : "Semua produk"}</h2><span>{shown.length} {en ? "products" : "produk"}</span></div>
-      {products.length > 4 || categories.length > 1 ? <div className="lh-tools">
-        {products.length > 4 ? <label className="lh-search"><span className="sr-only">{en ? "Search products" : "Cari produk"}</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg><input type="search" value={term} onChange={(event) => setTerm(event.target.value)} placeholder={en ? "Search products" : "Cari produk"} /></label> : null}
+      {products.length > 4 || numbered || categories.length > 1 ? <div className="lh-tools">
+        {products.length > 4 || numbered ? <label className="lh-search"><span className="sr-only">{en ? "Search products" : "Cari produk"}</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg><input type="search" value={term} onChange={(event) => setTerm(event.target.value)} placeholder={numbered ? (en ? "Search or type a number, e.g. 12" : "Cari atau ketik nomor, mis. 12") : en ? "Search products" : "Cari produk"} /></label> : null}
         {categories.length > 1 ? <div className="lh-chips" role="group" aria-label={en ? "Categories" : "Kategori"}><button type="button" aria-pressed={category === "all"} onClick={() => setCategory("all")}>{en ? "All" : "Semua"}</button>{categories.map((collection) => <button type="button" aria-pressed={category === collection.id} onClick={() => setCategory(collection.id)} key={collection.id}>{collection.title}</button>)}</div> : null}
       </div> : null}
-      <div className="lh-grid">{shown.map((item) => <article className="lh-card" key={item.id}>
-        <Thumb item={item} />
+      <div className="lh-grid">{shown.map((item) => <article className="lh-card" key={item.id} id={item.number ? `no-${item.number}` : undefined}>
+        <span className="lh-thumb-wrap"><Thumb item={item} />{item.number ? <span className="lh-no" aria-label={en ? `Number ${item.number}` : `Nomor ${item.number}`}>{item.number}</span> : null}</span>
         <h3>{item.title}</h3>
         <div className="lh-meta"><Price item={item} />{discount(item) ? <span className="lh-off">-{discount(item)}%</span> : null}</div>
         <BuyButton item={item} en={en} />
       </article>)}</div>
-      {!shown.length ? <p className="lh-empty">{en ? "No products found. Try another word." : "Produk tidak ditemukan. Coba kata lain atau pilih \"Semua\"."}</p> : null}
+      {!shown.length ? <p className="lh-empty">{/^(?:#|no\.?\s*)?\d+$/i.test(term.trim()) ? (en ? `No product with number ${term.trim().replace(/\D/g, "")}.` : `Tidak ada produk nomor ${term.trim().replace(/\D/g, "")}.`) : en ? "No products found. Try another word." : "Produk tidak ditemukan. Coba kata lain atau pilih \"Semua\"."}</p> : null}
     </section> : null}
 
     {linkGroups.length ? <section className="lh-links" aria-label={en ? "Links" : "Tautan"}>{linkGroups.map((group) => <div className="lh-link-group" key={group.id}>{group.title ? <h2>{group.title}</h2> : null}{group.items.map((item) => <a className={buttonClass} href={`/api/click/${item.id}`} key={item.id} rel="noopener noreferrer" target="_blank"><LinkIcon platform={item.platform} domain={item.domain} /><span>{item.title}</span><Arrow /></a>)}</div>)}</section> : null}

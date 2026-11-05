@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { PlatformIcon } from "@/components/platform-icon";
 import { formatRupiah } from "@/lib/rupiah";
 import { commercePlatforms, detectPlatform, platformColor, platformLabel } from "@/lib/commerce-platforms";
@@ -17,10 +17,10 @@ const statusLabel: Record<ProductStatus, string> = { live: "Live", scheduled: "S
 
 function Chevron({ up }: { up?: boolean }) { return <svg viewBox="0 0 24 24" aria-hidden="true"><path d={up ? "m6 15 6-6 6 6" : "m6 9 6 6 6-6"} /></svg>; }
 
-function ProductForm({ categories, product, onCancel }: { categories: Category[]; product?: Product; onCancel?: () => void }) {
-  const [url, setUrl] = useState(product?.url ?? "");
+function ProductForm({ categories, product, onCancel, sharedLink = "" }: { categories: Category[]; product?: Product; onCancel?: () => void; sharedLink?: string }) {
+  const [url, setUrl] = useState(product?.url ?? sharedLink);
   const detected = url ? detectPlatform(url) : null;
-  const [open, setOpen] = useState(Boolean(product));
+  const [open, setOpen] = useState(Boolean(product || sharedLink));
   // Isi otomatis dari link: field di-remount (key) supaya nilai baru masuk ke input yang tidak dikontrol.
   const [filled, setFilled] = useState<ProductDetails | null>(null);
   const [fillKey, setFillKey] = useState(0);
@@ -56,6 +56,13 @@ function ProductForm({ categories, product, onCancel }: { categories: Category[]
     // Produk baru: langsung coba isi begitu link toko ditempel.
     if (!product && store !== "website" && value !== lastLookup.current) timer.current = setTimeout(() => void fillFromLink(value), 500);
   }
+  // Link yang dibagikan dari aplikasi marketplace: langsung coba isi otomatis sekali.
+  useEffect(() => {
+    if (!sharedLink || product) return;
+    const start = setTimeout(() => void fillFromLink(sharedLink), 0);
+    return () => clearTimeout(start);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hanya sekali untuk link yang dibagikan
+  }, [sharedLink]);
   const canFill = /^https:\/\/\S+$/.test(url) && detected !== "website";
   return <form action={product ? updateProduct : addProduct} className="lh-product-form">
     {product ? <input type="hidden" name="id" value={product.id} /> : null}
@@ -96,7 +103,7 @@ function ProductRow({ product, categories, clicks, first, last }: { product: Pro
       <div className="lh-order"><button type="button" aria-label={`Move ${product.title} up`} disabled={first || pending} onClick={() => startTransition(() => moveProduct(product.id, -1))}><Chevron up /></button><button type="button" aria-label={`Move ${product.title} down`} disabled={last || pending} onClick={() => startTransition(() => moveProduct(product.id, 1))}><Chevron /></button></div>
       {product.image_url ? <span className="lh-item-thumb" style={{ backgroundImage: cssUrl(product.image_url) }} /> : <span className="lh-item-thumb"><PlatformIcon platform={product.platform} /></span>}
       <button type="button" className="lh-item-main" onClick={() => setEditing(!editing)} aria-expanded={editing}>
-        <b>{product.title}</b>
+        <b>{product.number ? <span className="lh-item-no">No. {product.number}</span> : null}{product.title}</b>
         <span><i style={{ background: platformColor(product.platform) }} />{platformLabel(product.platform)}{product.price ? ` · ${formatRupiah(product.price)}` : ""}{when ? ` · ${when}` : ""}</span>
       </button>
       <span className={`lh-status ${product.is_featured && status === "live" ? "promo" : status}`}>{product.is_featured && status === "live" ? "On sale" : statusLabel[status]}</span>
@@ -107,7 +114,7 @@ function ProductRow({ product, categories, clicks, first, last }: { product: Pro
   </li>;
 }
 
-export function ProductsWorkspace({ slug, error, message, collections, products, clicksByProduct, clicksByPlatform, statsReady }: { slug: string | null; error?: string; message?: string; collections: Category[]; products: Product[]; clicksByProduct: Record<string, number>; clicksByPlatform: Record<string, number>; statsReady: boolean }) {
+export function ProductsWorkspace({ slug, sharedLink = "", error, message, collections, products, clicksByProduct, clicksByPlatform, statsReady }: { slug: string | null; sharedLink?: string; error?: string; message?: string; collections: Category[]; products: Product[]; clicksByProduct: Record<string, number>; clicksByPlatform: Record<string, number>; statsReady: boolean }) {
   const [filter, setFilter] = useState<"all" | ProductStatus>("all");
   const [movingCategory, startCategoryMove] = useTransition();
   // Pratinjau dimuat ulang setiap isi produk/kategori berubah (bukan hanya jumlahnya).
@@ -137,7 +144,7 @@ export function ProductsWorkspace({ slug, error, message, collections, products,
 
       <section className="lh-box">
         <h2>Add a product</h2>
-        {collections.length ? <ProductForm categories={collections} /> : <div className="lh-empty-box"><p>Create a category first, for example &ldquo;Kitchen&rdquo; or &ldquo;Fashion&rdquo;. Shoppers can filter by category on your page.</p><form action={addShopCollection}><button className="lh-btn small">Create first category</button></form></div>}
+        {collections.length ? <ProductForm categories={collections} sharedLink={sharedLink} /> : <div className="lh-empty-box"><p>Create a category first, for example &ldquo;Kitchen&rdquo; or &ldquo;Fashion&rdquo;. Shoppers can filter by category on your page.</p><form action={addShopCollection}><button className="lh-btn small">Create first category</button></form></div>}
       </section>
 
       <section className="lh-box">
