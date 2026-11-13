@@ -166,3 +166,20 @@ button:hover, .button-link:hover, .nav-cta:hover, .public-links a:hover, .public
   .lh-link-edit { grid-template-columns: minmax(0, 1fr); padding-left: 0; }
   .lh-rename .lh-btn { opacity: 1; }
 }
+
+/* Bagikan satu produk (link /slug/p/12 + QR) */
+.lh-product-share { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--lh-line); border-radius: var(--lh-r-md); background: var(--lh-surface-2); }
+.lh-product-share summary { cursor: pointer; font-weight: 650; min-height: 32px; display: flex; align-items: center; }
+.lh-product-share[open] { display: grid; gap: .6rem; }
+.lh-product-share .lh-hint { margin: 0; }
+.lh-product-share .lh-qr { justify-items: start; }
+
+/* Tambah banyak link sekaligus, cadangan CSV */
+.lh-bulk { margin-top: 14px; border-top: 1px solid var(--lh-line); padding-top: 10px; }
+.lh-bulk summary { cursor: pointer; font-weight: 650; min-height: 36px; display: flex; align-items: center; }
+.lh-bulk-form { display: grid; gap: .8rem; margin-top: .6rem; }
+.lh-bulk-form .lh-form-actions { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+.lh-backup { display: flex; flex-wrap: wrap; align-items: end; gap: .8rem; }
+.lh-import { display: flex; flex-wrap: wrap; align-items: end; gap: .6rem; }
+.lh-file { display: grid; gap: .3rem; font-size: .86rem; font-weight: 600; }
+.lh-file input { max-width: 100%; font-size: .86rem; }

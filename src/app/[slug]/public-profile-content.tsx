@@ -13,25 +13,43 @@ import { cssUrl } from "@/lib/css-url";
 type LinkCollection = { id: string; title: string };
 type LinkItem = { id: string; collection_id: string | null; title: string; platform: string | null; domain?: string | null };
 type ShopCollection = { id: string; title: string };
-type Product = { id: string; collection_id: string; platform: string; title: string; price: string; image_url: string | null; compare_price: string; is_featured: boolean; ends_at: string | null; number?: number | null };
+export type PublicProduct = { id: string; collection_id: string; platform: string; title: string; price: string; image_url: string | null; compare_price: string; is_featured: boolean; ends_at: string | null; number?: number | null; badge?: string | null; ends?: string | null };
+type Product = PublicProduct;
 type Profile = { id:string; name: string; bio: string; avatar_url: string | null; title_style: string; button_style: string; button_roundness: string; custom_footer: string };
 
 const buyLabel = (platform: string, en: boolean) => isCommercePlatform(platform) ? `${en ? "Buy on" : "Beli di"} ${platformLabel(platform)}` : en ? "View product" : "Lihat produk";
-const discount = (item: Product) => { const price = Number(item.price); const before = Number(item.compare_price); return price && before > price ? Math.round((1 - price / before) * 100) : 0; };
+export const discount = (item: Product) => { const price = Number(item.price); const before = Number(item.compare_price); return price && before > price ? Math.round((1 - price / before) * 100) : 0; };
 
 function Arrow() { return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8" /></svg>; }
 
-function BuyButton({ item, en }: { item: Product; en: boolean }) {
+export function BuyButton({ item, en }: { item: Product; en: boolean }) {
   return <a className="lh-buy" href={`/api/product/${item.id}`} target="_blank" rel="noopener noreferrer sponsored" style={{ background: buyColor(item.platform) }}>{buyLabel(item.platform, en)}<Arrow /></a>;
 }
 
-function Price({ item }: { item: Product }) {
+export function Price({ item }: { item: Product }) {
   if (!item.price) return null;
   return <span className="lh-price">{formatRupiah(item.price)}{discount(item) ? <s>{formatRupiah(item.compare_price)}</s> : null}</span>;
 }
 
-function Thumb({ item }: { item: Product }) {
+export function Thumb({ item }: { item: Product }) {
   return item.image_url ? <span className="lh-thumb" role="img" aria-label={item.title} style={{ backgroundImage: cssUrl(item.image_url) }} /> : <span className="lh-thumb lh-thumb-empty"><PlatformIcon platform={item.platform} size={28} /></span>;
+}
+
+// Kunjungan halaman (sekali per hari per pengunjung, lihat /api/view). Pratinjau dashboard tidak dihitung.
+export function TrackView({ id, track = true }: { id: string; track?: boolean }) {
+  useEffect(() => { if (track) void fetch(`/api/view/${id}`, { method: "POST" }); }, [id, track]);
+  return null;
+}
+
+// Kartu produk: dipakai di halaman utama, halaman per produk (/slug/p/12) dan daftar per video (/slug/c/...).
+export function ProductCard({ item, en }: { item: Product; en: boolean }) {
+  return <article className="lh-card" id={item.number ? `no-${item.number}` : undefined}>
+    <span className="lh-thumb-wrap"><Thumb item={item} />{item.number ? <span className="lh-no" aria-label={en ? `Number ${item.number}` : `Nomor ${item.number}`}>{item.number}</span> : null}{item.badge ? <span className="lh-tag">{item.badge}</span> : null}</span>
+    <h3>{item.title}</h3>
+    <div className="lh-meta"><Price item={item} />{discount(item) ? <span className="lh-off">-{discount(item)}%</span> : null}</div>
+    {item.ends ? <p className="lh-ends">{item.ends}</p> : null}
+    <BuyButton item={item} en={en} />
+  </article>;
 }
 
 export function PublicProfileContent({ profile, linkCollections, links, shopCollections, products, locale, track = true, initialSearch = "" }: { locale:Locale; track?: boolean; initialSearch?: string; profile: Profile; linkCollections: LinkCollection[]; links: LinkItem[]; shopCollections: ShopCollection[]; products: Product[] }) {
@@ -62,10 +80,10 @@ export function PublicProfileContent({ profile, linkCollections, links, shopColl
     {featured.length ? <section aria-labelledby="lh-promo"><div className="lh-section-title"><h2 id="lh-promo">{en ? "On sale" : "Lagi promo"}</h2></div>{featured.map((item) => <article className="lh-featured" key={item.id}>
       <Thumb item={item} />
       <div>
-        {discount(item) ? <span className="lh-flag">-{discount(item)}%</span> : <span className="lh-flag">{en ? "Pick" : "Pilihan"}</span>}
+        {discount(item) ? <span className="lh-flag">-{discount(item)}%</span> : <span className="lh-flag">{en ? "Pick" : "Pilihan"}</span>}{item.badge ? <span className="lh-flag lh-flag-plain">{item.badge}</span> : null}
         <h3>{item.title}</h3>
         <Price item={item} />
-        {item.ends_at ? <p className="lh-until">{en ? "Until" : "Promo sampai"} {formatEndDate(item.ends_at, locale)}</p> : null}
+        {item.ends ? <p className="lh-until lh-ends">{item.ends}</p> : item.ends_at ? <p className="lh-until">{en ? "Until" : "Promo sampai"} {formatEndDate(item.ends_at, locale)}</p> : null}
         <BuyButton item={item} en={en} />
       </div>
     </article>)}</section> : null}
@@ -76,12 +94,7 @@ export function PublicProfileContent({ profile, linkCollections, links, shopColl
         {products.length > 4 || numbered ? <label className="lh-search"><span className="sr-only">{en ? "Search products" : "Cari produk"}</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg><input type="search" value={term} onChange={(event) => setTerm(event.target.value)} placeholder={numbered ? (en ? "Search or type a number, e.g. 12" : "Cari atau ketik nomor, mis. 12") : en ? "Search products" : "Cari produk"} /></label> : null}
         {categories.length > 1 ? <div className="lh-chips" role="group" aria-label={en ? "Categories" : "Kategori"}><button type="button" aria-pressed={category === "all"} onClick={() => setCategory("all")}>{en ? "All" : "Semua"}</button>{categories.map((collection) => <button type="button" aria-pressed={category === collection.id} onClick={() => setCategory(collection.id)} key={collection.id}>{collection.title}</button>)}</div> : null}
       </div> : null}
-      <div className="lh-grid">{shown.map((item) => <article className="lh-card" key={item.id} id={item.number ? `no-${item.number}` : undefined}>
-        <span className="lh-thumb-wrap"><Thumb item={item} />{item.number ? <span className="lh-no" aria-label={en ? `Number ${item.number}` : `Nomor ${item.number}`}>{item.number}</span> : null}</span>
-        <h3>{item.title}</h3>
-        <div className="lh-meta"><Price item={item} />{discount(item) ? <span className="lh-off">-{discount(item)}%</span> : null}</div>
-        <BuyButton item={item} en={en} />
-      </article>)}</div>
+      <div className="lh-grid">{shown.map((item) => <ProductCard item={item} en={en} key={item.id} />)}</div>
       {!shown.length ? <p className="lh-empty">{/^(?:#|no\.?\s*)?\d+$/i.test(term.trim()) ? (en ? `No product with number ${term.trim().replace(/\D/g, "")}.` : `Tidak ada produk nomor ${term.trim().replace(/\D/g, "")}.`) : en ? "No products found. Try another word." : "Produk tidak ditemukan. Coba kata lain atau pilih \"Semua\"."}</p> : null}
     </section> : null}
 

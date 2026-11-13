@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useFormStatus } from "react-dom";
 import { PlatformIcon } from "@/components/platform-icon";
 import { formatRupiah } from "@/lib/rupiah";
 import { commercePlatforms, detectPlatform, platformColor, platformLabel } from "@/lib/commerce-platforms";
@@ -9,8 +10,9 @@ import { dateInputValue, formatEndDate, formatStartDate, productStatus, type Pro
 import type { ProductDetails } from "@/lib/product-details";
 import { MAX_UPLOAD, shrinkImage } from "@/lib/shrink-image";
 import { RupiahInput } from "./rupiah-input";
-import { addProduct, addShopCollection, deleteProduct, fetchProductDetails, deleteShopCollection, moveProduct, moveShopCollection, setProductActive, updateProduct, updateShopCollection } from "../actions";
+import { addProduct, addProductsBulk, importProductsCsv, addShopCollection, deleteProduct, fetchProductDetails, deleteShopCollection, moveProduct, moveShopCollection, setProductActive, updateProduct, updateShopCollection } from "../actions";
 import { cssUrl } from "@/lib/css-url";
+import { QrCode } from "@/components/qr-code";
 
 type Category = { id: string; title: string; position: number };
 const statusLabel: Record<ProductStatus, string> = { live: "Live", scheduled: "Scheduled", ended: "Ended", hidden: "Hidden" };
@@ -93,7 +95,39 @@ function ProductForm({ categories, product, onCancel, sharedLink = "" }: { categ
   </form>;
 }
 
-function ProductRow({ product, categories, clicks, first, last }: { product: Product; categories: Category[]; clicks: number | null; first: boolean; last: boolean }) {
+// Link khusus satu produk (/slug/p/12) dengan gambar pratinjau sendiri saat dibagikan.
+function ProductShare({ product, pageUrl }: { product: Product; pageUrl: string }) {
+  const [copied, setCopied] = useState(false);
+  const url = `${pageUrl}/p/${product.number}`;
+  async function copy() { await navigator.clipboard.writeText(url).catch(() => undefined); setCopied(true); window.setTimeout(() => setCopied(false), 1800); }
+  return <details className="lh-product-share">
+    <summary>Share this product</summary>
+    <p className="lh-hint">A link to just this product, with its photo and price in the preview. Handy for WhatsApp and comments.</p>
+    <div className="lh-copy"><input readOnly value={url} aria-label={`Link to ${product.title}`} onFocus={(event) => event.target.select()} /><button type="button" className="lh-btn small" onClick={copy}>{copied ? "Copied" : "Copy"}</button></div>
+    <div className="lh-share-row"><a className="lh-btn small secondary" href={`https://wa.me/?text=${encodeURIComponent(`${product.title} ${url}`)}`} target="_blank" rel="noopener noreferrer">WhatsApp</a><a className="lh-btn small secondary" href={url} target="_blank" rel="noopener noreferrer">Open</a></div>
+    <QrCode value={url} filename={`product-${product.number}-qr`} size={120} />
+  </details>;
+}
+
+function Submit({ label, busy }: { label: string; busy: string }) {
+  const { pending } = useFormStatus();
+  return <button className="lh-btn small" disabled={pending}>{pending ? busy : label}</button>;
+}
+
+// Tempel beberapa link sekaligus: jadi draf tersembunyi, lalu nama/harga dicek di daftar.
+function BulkAdd({ categories }: { categories: Category[] }) {
+  const [count, setCount] = useState(0);
+  return <details className="lh-bulk">
+    <summary>Add several links at once</summary>
+    <form action={addProductsBulk} className="lh-bulk-form">
+      <label className="lh-field lh-wide">Product links, one per line <small>Up to 10. Each one becomes a hidden draft with its name and photo filled in where the store allows it.</small><textarea name="links" rows={5} required onChange={(event) => setCount(event.target.value.split(/\s+/).filter((value) => /^https?:\/\//.test(value)).length)} placeholder={"https://www.tokopedia.com/...\nhttps://shopee.co.id/..."} /></label>
+      <label className="lh-field">Category<select name="collection_id" defaultValue={categories[0]?.id}>{categories.map((category) => <option value={category.id} key={category.id}>{category.title}</option>)}</select></label>
+      <div className="lh-form-actions"><span className="lh-hint">{count > 10 ? `${count} links: only the first 10 are added.` : count ? `${count} ${count === 1 ? "link" : "links"}` : ""}</span><Submit label="Add as drafts" busy="Reading links…" /></div>
+    </form>
+  </details>;
+}
+
+function ProductRow({ product, categories, clicks, first, last, shareUrl }: { product: Product; categories: Category[]; clicks: number | null; first: boolean; last: boolean; shareUrl: string | null }) {
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
   const status = productStatus(product);
@@ -111,10 +145,11 @@ function ProductRow({ product, categories, clicks, first, last }: { product: Pro
       <button type="button" className="lh-switch" role="switch" aria-checked={product.is_active} aria-label={`Show ${product.title} on my page`} disabled={pending} onClick={() => startTransition(() => setProductActive(product.id, !product.is_active))} />
     </div>
     {editing ? <ProductForm categories={categories} product={product} onCancel={() => setEditing(false)} /> : null}
+    {editing && shareUrl && product.number && status === "live" ? <ProductShare product={product} pageUrl={shareUrl} /> : null}
   </li>;
 }
 
-export function ProductsWorkspace({ slug, sharedLink = "", error, message, collections, products, clicksByProduct, clicksByPlatform, statsReady }: { slug: string | null; sharedLink?: string; error?: string; message?: string; collections: Category[]; products: Product[]; clicksByProduct: Record<string, number>; clicksByPlatform: Record<string, number>; statsReady: boolean }) {
+export function ProductsWorkspace({ slug, origin = "", sharedLink = "", error, message, collections, products, clicksByProduct, clicksByPlatform, statsReady }: { slug: string | null; origin?: string; sharedLink?: string; error?: string; message?: string; collections: Category[]; products: Product[]; clicksByProduct: Record<string, number>; clicksByPlatform: Record<string, number>; statsReady: boolean }) {
   const [filter, setFilter] = useState<"all" | ProductStatus>("all");
   const [movingCategory, startCategoryMove] = useTransition();
   // Pratinjau dimuat ulang setiap isi produk/kategori berubah (bukan hanya jumlahnya).
@@ -144,7 +179,7 @@ export function ProductsWorkspace({ slug, sharedLink = "", error, message, colle
 
       <section className="lh-box">
         <h2>Add a product</h2>
-        {collections.length ? <ProductForm categories={collections} sharedLink={sharedLink} /> : <div className="lh-empty-box"><p>Create a category first, for example &ldquo;Kitchen&rdquo; or &ldquo;Fashion&rdquo;. Shoppers can filter by category on your page.</p><form action={addShopCollection}><button className="lh-btn small">Create first category</button></form></div>}
+        {collections.length ? <><ProductForm categories={collections} sharedLink={sharedLink} /><BulkAdd categories={collections} /></> : <div className="lh-empty-box"><p>Create a category first, for example &ldquo;Kitchen&rdquo; or &ldquo;Fashion&rdquo;. Shoppers can filter by category on your page.</p><form action={addShopCollection}><button className="lh-btn small">Create first category</button></form></div>}
       </section>
 
       <section className="lh-box">
@@ -159,7 +194,7 @@ export function ProductsWorkspace({ slug, sharedLink = "", error, message, colle
         </div>
         {collections.map((category) => { const items = sorted.filter((item) => item.collection_id === category.id); const shown = items.filter((item) => filter === "all" || productStatus(item) === filter); return filter !== "all" && !shown.length ? null : <div className="lh-group" key={category.id}>
           <h3>{category.title} <span>{items.length}</span></h3>
-          {shown.length ? <ul className="lh-items">{shown.map((item) => <ProductRow key={JSON.stringify(item)} product={item} categories={collections} clicks={statsReady ? clicksByProduct[item.id] ?? 0 : null} first={filter !== "all" || items[0].id === item.id} last={filter !== "all" || items[items.length - 1].id === item.id} />)}</ul> : <p className="lh-hint">No products in this category yet.</p>}
+          {shown.length ? <ul className="lh-items">{shown.map((item) => <ProductRow key={JSON.stringify(item)} product={item} categories={collections} clicks={statsReady ? clicksByProduct[item.id] ?? 0 : null} first={filter !== "all" || items[0].id === item.id} last={filter !== "all" || items[items.length - 1].id === item.id} shareUrl={slug && origin ? `${origin}/${slug}` : null} />)}</ul> : <p className="lh-hint">No products in this category yet.</p>}
         </div>; })}
         {!products.length && collections.length ? <p className="lh-hint">Paste your first product link above.</p> : null}
       </section>
@@ -170,6 +205,14 @@ export function ProductsWorkspace({ slug, sharedLink = "", error, message, colle
         <ul className="lh-categories">{collections.map((category, index) => <li key={category.id}><div className="lh-order"><button type="button" aria-label={`Move ${category.title} up`} disabled={index === 0 || movingCategory} onClick={() => startCategoryMove(() => moveShopCollection(category.id, -1))}><Chevron up /></button><button type="button" aria-label={`Move ${category.title} down`} disabled={index === collections.length - 1 || movingCategory} onClick={() => startCategoryMove(() => moveShopCollection(category.id, 1))}><Chevron /></button></div><form action={updateShopCollection}><input type="hidden" name="id" value={category.id} /><input name="title" defaultValue={category.title} maxLength={80} aria-label="Category name" required /><button className="lh-btn secondary small">Rename</button></form><form action={deleteShopCollection} onSubmit={(event) => { if (!confirm("Delete this category and all of its products?")) event.preventDefault(); }}><input type="hidden" name="id" value={category.id} /><button className="lh-btn secondary small lh-danger">Delete</button></form></li>)}</ul>
         <form action={addShopCollection}><button className="lh-btn secondary small">+ Add category</button></form>
       </section> : null}
+      <section className="lh-box">
+        <h2>Backup and import</h2>
+        <p className="lh-hint">Download your products as a CSV file to keep a copy or edit them in a spreadsheet. Import the same format to add products, for example to another page.</p>
+        <div className="lh-backup">
+          {products.length ? <a className="lh-btn secondary small" href="/api/export/products" download>Export CSV</a> : null}
+          <form action={importProductsCsv} className="lh-import"><label className="lh-file">CSV file<input name="file" type="file" accept=".csv,text/csv" required /></label><Submit label="Import" busy="Importing…" /></form>
+        </div>
+      </section>
     </div>
 
     <aside className="lh-dash-aside">
