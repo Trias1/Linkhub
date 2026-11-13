@@ -3,10 +3,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export type Product = {
   id: string; collection_id: string; platform: string; title: string; url: string; price: string; image_url: string | null; is_active: boolean;
   compare_price: string; is_featured: boolean; starts_at: string | null; ends_at: string | null;
-  number: number | null;
+  number: number | null; created_at: string;
 };
 
-const legacyColumns = "id,collection_id,platform,title,url,price,image_url,is_active";
+const legacyColumns = "id,collection_id,platform,title,url,price,image_url,is_active,created_at";
 const promoColumns = `${legacyColumns},compare_price,is_featured,starts_at,ends_at`;
 const columns = `${promoColumns},number`;
 
@@ -40,4 +40,25 @@ export function dateInputValue(value: string | null, isEnd = false) {
   if (!value) return "";
   const date = new Date(Date.parse(value) - (isEnd ? 1 : 0));
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(date);
+}
+
+const DAY_MS = 86_400_000;
+const wibDay = (time: number) => Math.floor((time + 7 * 3_600_000) / DAY_MS);
+
+// "Ends today" / "Ends tomorrow" / "Ends in 3 days" untuk promo yang tinggal beberapa hari (hari dihitung WIB).
+export function endsSoon(endsAt: string | null, now = Date.now()) {
+  if (!endsAt) return null;
+  const days = wibDay(Date.parse(endsAt) - 1) - wibDay(now);
+  if (days < 0 || days > 3) return null;
+  return days === 0 ? "Ends today" : days === 1 ? "Ends tomorrow" : `Ends in ${days} days`;
+}
+
+// Label otomatis di halaman publik: "Popular" = 3 produk dengan klik Buy terbanyak 7 hari terakhir (min. 2 klik),
+// "New" = ditambahkan kurang dari 7 hari lalu.
+export function productBadges(items: Pick<Product, "id" | "created_at">[], clickedIds: string[], now = Date.now()) {
+  const counts = new Map<string, number>();
+  clickedIds.forEach((id) => counts.set(id, (counts.get(id) ?? 0) + 1));
+  const shown = new Set(items.map((item) => item.id));
+  const popular = new Set([...counts].filter(([id, count]) => shown.has(id) && count >= 2).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id]) => id));
+  return new Map(items.map((item) => [item.id, popular.has(item.id) ? "Popular" : item.created_at && now - Date.parse(item.created_at) < 7 * DAY_MS ? "New" : null] as const));
 }

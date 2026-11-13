@@ -6,11 +6,12 @@ import { cookies } from "next/headers";
 import { getDashboardContext, needsMfaCode } from "@/lib/active-linktree";
 import { createClient } from "@/lib/supabase/server";
 import { priceDigits } from "@/lib/rupiah";
-import { detectPlatform, isCommercePlatform } from "@/lib/commerce-platforms";
+import { detectPlatform, isCommercePlatform, platformLabel } from "@/lib/commerce-platforms";
 import { extractLink, linkPlatform } from "@/lib/link-platform";
 import { slugProblem } from "@/lib/slug";
 import { isUuid, rateLimit } from "@/lib/security";
 import { downloadProductImage, readProductDetails, type LookupFailure, type ProductDetails } from "@/lib/product-details";
+import { parseCsv } from "@/lib/csv";
 
 async function authenticatedClient() {
   return getDashboardContext();
@@ -291,6 +292,110 @@ export async function addProduct(formData: FormData) {
   }
   revalidatePath("/dashboard/shops");
   redirect("/dashboard/shops?message=Product added");
+}
+
+// Beberapa link sekaligus (satu per baris) -> draf produk tersembunyi; nama dan foto diisi dari link kalau bisa.
+export async function addProductsBulk(formData: FormData) {
+  const { supabase, user, linktree } = await authenticatedClient();
+  const collectionId = await ownedShopCollection(supabase, linktree.id, formData.get("collection_id"));
+  const links = [...new Set(String(formData.get("links") ?? "").slice(0, 20000).split(/\s+/).map((value) => extractLink(value)).filter((value) => /^https:\/\/\S+$/.test(value) && value.length <= 2048))].slice(0, 10);
+  if (!links.length) redirect("/dashboard/shops?error=Paste at least one product link that starts with https://");
+  if (!(await rateLimit("product-bulk", 5, 600))) redirect("/dashboard/shops?error=Too many bulk adds. Wait a few minutes and try again.");
+  const results: { url: string; details: ProductDetails | null }[] = [];
+  for (let index = 0; index < links.length; index += 3) {
+    results.push(...await Promise.all(links.slice(index, index + 3).map(async (url) => {
+      const found = await readProductDetails(url).catch((): LookupFailure => "unreachable");
+      return { url, details: typeof found === "string" ? null : found };
+    })));
+  }
+  let position = await nextPosition(supabase, "products", "collection_id", collectionId);
+  let added = 0; let filled = 0;
+  for (const { url, details } of results) {
+    const platform = detectPlatform(url);
+    const image = details?.image ? await importProductImage(supabase, user.id, details.image) : null;
+    const title = (details?.title || `${isCommercePlatform(platform) ? platformLabel(platform) : "New"} product ${added + 1}`).slice(0, 100);
+    const { error } = await supabase.from("products").insert({
+      user_id: user.id, linktree_id: linktree.id, collection_id: collectionId, platform, title, url,
+      price: details && !details.pricesSkipped ? priceDigits(details.price) : "", compare_price: details && !details.pricesSkipped ? priceDigits(details.comparePrice) : "",
+      image_path: image?.path ?? null, image_url: image?.url ?? null, position: position++, is_active: false,
+    });
+    if (error) { if (image) await supabase.storage.from("product-images").remove([image.path]); continue; }
+    added++; if (details) filled++;
+  }
+  revalidatePath("/dashboard/shops");
+  if (!added) redirect("/dashboard/shops?error=Could not add these links. Try adding them one by one.");
+  redirect(`/dashboard/shops?message=${encodeURIComponent(`Added ${added} hidden ${added === 1 ? "draft" : "drafts"}${filled < added ? ` (${added - filled} without details)` : ""}. Check names and prices, then switch them on.`)}`);
+}
+
+// Import CSV (format sama dengan Export CSV). Kategori yang belum ada dibuat; foto hanya disalin dari Storage LinkHub.
+export async function importProductsCsv(formData: FormData) {
+  const { supabase, user, linktree } = await authenticatedClient();
+  const file = formData.get("file");
+  if (!(file instanceof File) || !file.size) redirect("/dashboard/shops?error=Choose a CSV file to import");
+  if (file.size > 1_000_000) redirect("/dashboard/shops?error=This file is too big. The limit is 1 MB.");
+  if (!(await rateLimit("product-import", 5, 600))) redirect("/dashboard/shops?error=Too many imports. Wait a few minutes and try again.");
+  const [head = [], ...rows] = parseCsv(await file.text(), 501);
+  const column = (...names: string[]) => head.findIndex((value) => names.includes(value.toLowerCase()));
+  const at = { title: column("name", "title", "product name"), url: column("link", "url", "product link"), price: column("price"), compare: column("original price", "compare price"), category: column("category"), store: column("store", "platform"), visible: column("visible"), sale: column("on sale", "featured"), from: column("show from", "starts"), until: column("until", "ends"), photo: column("photo", "image") };
+  if (at.title < 0 || at.url < 0) redirect("/dashboard/shops?error=The CSV needs at least a Name and a Link column. Export your products to see the format.");
+  if (rows.length > 500) redirect("/dashboard/shops?error=Import up to 500 products at a time");
+  const cell = (row: string[], index: number) => (index >= 0 ? row[index] ?? "" : "").trim();
+  const yes = (value: string, fallback: boolean) => value ? /^(yes|y|true|1|ya)$/i.test(value) : fallback;
+  const { data: existing } = await supabase.from("shop_collections").select("id,title").eq("linktree_id", linktree.id);
+  const categories = new Map((existing ?? []).map((item) => [String(item.title).toLowerCase(), item.id as string]));
+  let categoryPosition = await nextPosition(supabase, "shop_collections", "linktree_id", linktree.id);
+  async function categoryId(name: string) {
+    const title = (name || "Imported").slice(0, 80);
+    const known = categories.get(title.toLowerCase());
+    if (known) return known;
+    const { data } = await supabase.from("shop_collections").insert({ user_id: user.id, linktree_id: linktree.id, title, position: categoryPosition++ }).select("id").single();
+    if (data) categories.set(title.toLowerCase(), data.id);
+    return (data?.id as string | undefined) ?? null;
+  }
+  const storage = process.env.NEXT_PUBLIC_SUPABASE_URL ? `${process.env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/+$/, "")}/storage/v1/object/public/product-images/` : null;
+  async function copyPhoto(url: string) {
+    if (!storage || !url.startsWith(storage)) return null;
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      const bytes = response.ok ? new Uint8Array(await response.arrayBuffer()) : null;
+      const image = bytes && bytes.length <= 5_000_000 ? imageType(bytes.slice(0, 12)) : null;
+      if (!bytes || !image) return null;
+      const path = `${user.id}/${crypto.randomUUID()}.${image.extension}`;
+      const { error } = await supabase.storage.from("product-images").upload(path, bytes, { contentType: image.type, upsert: false });
+      return error ? null : { path, url: supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl };
+    } catch { return null; }
+  }
+  // Kategori dibuat berurutan (bukan paralel) supaya nama yang sama tidak jadi dua kategori.
+  const parsed = [];
+  for (const row of rows) {
+    let url = "";
+    try { url = validUrl(extractLink(cell(row, at.url))); } catch { parsed.push(null); continue; }
+    const title = cell(row, at.title).slice(0, 100);
+    if (!title || !/^https?:/.test(url)) { parsed.push(null); continue; }
+    const collection = await categoryId(cell(row, at.category));
+    if (!collection) { parsed.push(null); continue; }
+    const store = cell(row, at.store).toLowerCase().replace(/\s+/g, "");
+    const platform = isCommercePlatform(store) || store === "website" ? store : detectPlatform(url);
+    const startsAt = wibDate(cell(row, at.from)); const endsAt = wibDate(cell(row, at.until), true);
+    parsed.push({ collection, photo: cell(row, at.photo), row: { platform, title, url, price: priceDigits(cell(row, at.price)), compare_price: priceDigits(cell(row, at.compare)), is_active: yes(cell(row, at.visible), true), is_featured: yes(cell(row, at.sale), false), starts_at: startsAt, ends_at: startsAt && endsAt && endsAt <= startsAt ? null : endsAt } });
+  }
+  const positions = new Map<string, number>();
+  let added = 0; let skipped = 0;
+  for (let index = 0; index < parsed.length; index += 5) {
+    const batch = parsed.slice(index, index + 5);
+    const photos = await Promise.all(batch.map((item) => item?.photo ? copyPhoto(item.photo) : null));
+    for (const [offset, item] of batch.entries()) {
+      if (!item) { skipped++; continue; }
+      if (!positions.has(item.collection)) positions.set(item.collection, await nextPosition(supabase, "products", "collection_id", item.collection));
+      const position = positions.get(item.collection)!; positions.set(item.collection, position + 1);
+      const image = photos[offset];
+      const { error } = await supabase.from("products").insert({ user_id: user.id, linktree_id: linktree.id, collection_id: item.collection, ...item.row, image_path: image?.path ?? null, image_url: image?.url ?? null, position });
+      if (error) { skipped++; if (image) await supabase.storage.from("product-images").remove([image.path]); } else added++;
+    }
+  }
+  revalidatePath("/dashboard/shops");
+  if (!added) redirect("/dashboard/shops?error=No products were imported. Check that each row has a name and a link.");
+  redirect(`/dashboard/shops?message=${encodeURIComponent(`Imported ${added} ${added === 1 ? "product" : "products"}${skipped ? `, skipped ${skipped} ${skipped === 1 ? "row" : "rows"}` : ""}.`)}`);
 }
 
 export async function updateProduct(formData: FormData) {
