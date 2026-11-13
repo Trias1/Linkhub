@@ -18,5 +18,8 @@ export function profileStyle(colors: Colors) {
     : bg;
   // Kartu sedikit lebih terang dari latar: hampir putih di tema terang, abu tipis di tema gelap.
   const card = `color-mix(in srgb, ${bg}, white ${isDark(bg) ? 8 : 72}%)`;
-  return { background, "--profile-bg": bg, "--profile-text": colors.text_color, "--profile-button": button, "--profile-button-text": colors.button_text_color, "--profile-title": colors.title_color, "--lh-card": card } as React.CSSProperties;
+  // Kotak cari menempel di atas saat scroll dengan latar polos. Di latar gradasi warna polos itu terlihat seperti pita,
+  // jadi di sana kotak cari ikut ter-scroll tanpa latar.
+  const solid = colors.wallpaper_style !== "gradient" && colors.wallpaper_style !== "soft";
+  return { background, "--lh-tools-bg": solid ? bg : "transparent", "--lh-tools-pos": solid ? "sticky" : "static", "--profile-bg": bg, "--profile-text": colors.text_color, "--profile-button": button, "--profile-button-text": colors.button_text_color, "--profile-title": colors.title_color, "--lh-card": card } as React.CSSProperties;
 }
