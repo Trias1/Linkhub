@@ -174,3 +174,10 @@
 .lh-table th { padding: 0 .6rem .5rem 0; border-bottom: 1px solid var(--lh-line); color: var(--lh-muted); font-size: .8rem; font-weight: 600; text-align: left; }
 .lh-table td { padding: .6rem .6rem .6rem 0; border-bottom: 1px solid var(--lh-line); white-space: nowrap; }
 @media (max-width: 700px) { .lh-admin .lh-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Share: link bio per aplikasi */
+.lh-bio-links { display: grid; gap: .5rem; margin: .8rem 0 0; padding: 0; list-style: none; }
+.lh-bio-links li { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; align-items: center; gap: .6rem; }
+.lh-bio-links input { min-width: 0; height: 40px; padding: 0 .7rem; border: 1px solid var(--lh-line-strong); border-radius: var(--lh-r-md); background: var(--lh-surface-2); color: var(--lh-ink); font: inherit; font-size: 16px; }
+.lh-bio-links .lh-btn { min-height: 40px; }
+@media (max-width: 560px) { .lh-bio-links li { grid-template-columns: minmax(0, 1fr) auto; } .lh-bio-links b { grid-column: 1 / -1; } }

@@ -8,10 +8,11 @@ import { createClient } from "@/lib/supabase/server";
 import { priceDigits } from "@/lib/rupiah";
 import { detectPlatform, isCommercePlatform, platformLabel } from "@/lib/commerce-platforms";
 import { extractLink, linkPlatform } from "@/lib/link-platform";
-import { slugProblem } from "@/lib/slug";
+import { normalizeSlug, slugProblem } from "@/lib/slug";
 import { isUuid, rateLimit } from "@/lib/security";
 import { downloadProductImage, readProductDetails, type LookupFailure, type ProductDetails } from "@/lib/product-details";
 import { parseCsv } from "@/lib/csv";
+import { isShopeeHost, shopeeConfigured, shopeeShortLink } from "@/lib/shopee-affiliate";
 
 async function authenticatedClient() {
   return getDashboardContext();
@@ -269,7 +270,8 @@ function productFields(formData: FormData) {
   if (startsAt && endsAt && endsAt <= startsAt) redirect("/dashboard/shops?error=End date must be after the start date");
   const title = String(formData.get("title") ?? "").trim().slice(0, 100);
   if (!title) redirect("/dashboard/shops?error=Product name is required");
-  return { platform, title, url, price: priceDigits(String(formData.get("price") ?? "")), compare_price: priceDigits(String(formData.get("compare_price") ?? "")), is_featured: formData.get("is_featured") === "on", starts_at: startsAt, ends_at: endsAt };
+  const note = String(formData.get("note") ?? "").replace(/\s+/g, " ").trim().slice(0, 140);
+  return { platform, title, url, note, price: priceDigits(String(formData.get("price") ?? "")), compare_price: priceDigits(String(formData.get("compare_price") ?? "")), is_featured: formData.get("is_featured") === "on", starts_at: startsAt, ends_at: endsAt };
 }
 
 async function ownedShopCollection(supabase: Awaited<ReturnType<typeof createClient>>, linktreeId: string, value: FormDataEntryValue | null) {
@@ -295,6 +297,20 @@ export async function addProduct(formData: FormData) {
 }
 
 // Beberapa link sekaligus (satu per baris) -> draf produk tersembunyi; nama dan foto diisi dari link kalau bisa.
+// Ubah link Shopee biasa jadi link affiliate milik akun Shopee Affiliate yang kredensialnya ada di env.
+// Hanya untuk admin (pemilik kredensial), supaya komisi tidak tercatat atas nama orang lain.
+export async function shopeeAffiliateLink(link: string): Promise<{ link: string | null; error?: string }> {
+  const { supabase, user } = await authenticatedClient();
+  const { data: account } = await supabase.from("profiles").select("is_admin").eq("id", user.id).single();
+  if (!account?.is_admin || !shopeeConfigured()) return { link: null, error: "Affiliate links are not available for this account." };
+  let url: URL;
+  try { url = new URL(extractLink(String(link).slice(0, 2048))); } catch { return { link: null, error: "Paste a Shopee product link first." }; }
+  if (url.protocol !== "https:" || !isShopeeHost(url.hostname)) return { link: null, error: "This only works for Shopee links." };
+  if (!(await rateLimit("shopee-link", 30, 300))) return { link: null, error: "Too many requests. Wait a few minutes." };
+  const short = await shopeeShortLink(url.toString()).catch(() => null);
+  return short ? { link: short } : { link: null, error: "Shopee did not return an affiliate link. Check the App ID and Secret, or try again." };
+}
+
 export async function addProductsBulk(formData: FormData) {
   const { supabase, user, linktree } = await authenticatedClient();
   const collectionId = await ownedShopCollection(supabase, linktree.id, formData.get("collection_id"));
@@ -336,7 +352,7 @@ export async function importProductsCsv(formData: FormData) {
   if (!(await rateLimit("product-import", 5, 600))) redirect("/dashboard/shops?error=Too many imports. Wait a few minutes and try again.");
   const [head = [], ...rows] = parseCsv(await file.text(), 501);
   const column = (...names: string[]) => head.findIndex((value) => names.includes(value.toLowerCase()));
-  const at = { title: column("name", "title", "product name"), url: column("link", "url", "product link"), price: column("price"), compare: column("original price", "compare price"), category: column("category"), store: column("store", "platform"), visible: column("visible"), sale: column("on sale", "featured"), from: column("show from", "starts"), until: column("until", "ends"), photo: column("photo", "image") };
+  const at = { note: column("note", "your note"), title: column("name", "title", "product name"), url: column("link", "url", "product link"), price: column("price"), compare: column("original price", "compare price"), category: column("category"), store: column("store", "platform"), visible: column("visible"), sale: column("on sale", "featured"), from: column("show from", "starts"), until: column("until", "ends"), photo: column("photo", "image") };
   if (at.title < 0 || at.url < 0) redirect("/dashboard/shops?error=The CSV needs at least a Name and a Link column. Export your products to see the format.");
   if (rows.length > 500) redirect("/dashboard/shops?error=Import up to 500 products at a time");
   const cell = (row: string[], index: number) => (index >= 0 ? row[index] ?? "" : "").trim();
@@ -377,7 +393,7 @@ export async function importProductsCsv(formData: FormData) {
     const store = cell(row, at.store).toLowerCase().replace(/\s+/g, "");
     const platform = isCommercePlatform(store) || store === "website" ? store : detectPlatform(url);
     const startsAt = wibDate(cell(row, at.from)); const endsAt = wibDate(cell(row, at.until), true);
-    parsed.push({ collection, photo: cell(row, at.photo), row: { platform, title, url, price: priceDigits(cell(row, at.price)), compare_price: priceDigits(cell(row, at.compare)), is_active: yes(cell(row, at.visible), true), is_featured: yes(cell(row, at.sale), false), starts_at: startsAt, ends_at: startsAt && endsAt && endsAt <= startsAt ? null : endsAt } });
+    parsed.push({ collection, photo: cell(row, at.photo), row: { platform, title, url, note: cell(row, at.note).replace(/\s+/g, " ").slice(0, 140), price: priceDigits(cell(row, at.price)), compare_price: priceDigits(cell(row, at.compare)), is_active: yes(cell(row, at.visible), true), is_featured: yes(cell(row, at.sale), false), starts_at: startsAt, ends_at: startsAt && endsAt && endsAt <= startsAt ? null : endsAt } });
   }
   const positions = new Map<string, number>();
   let added = 0; let skipped = 0;
@@ -451,6 +467,50 @@ export async function deleteProduct(formData: FormData) {
   revalidatePath("/dashboard/shops");
 }
 
+// Daftar produk per video (/slug/c/haul-1212). Alamat dibuat dari nama; kalau sudah dipakai diberi angka.
+export async function createProductList(formData: FormData) {
+  const { supabase, user, linktree } = await authenticatedClient();
+  const title = String(formData.get("title") ?? "").trim().slice(0, 60);
+  if (!title) redirect("/dashboard/shops/lists?error=List name is required");
+  const base = normalizeSlug(title).slice(0, 34).replace(/-+$/, "") || "list";
+  const { data: taken } = await supabase.from("product_lists").select("slug").eq("linktree_id", linktree.id);
+  const used = new Set((taken ?? []).map((item) => item.slug as string));
+  if (used.size >= 50) redirect("/dashboard/shops/lists?error=You can have up to 50 lists. Delete an old one first.");
+  let slug = base;
+  for (let count = 2; used.has(slug); count++) slug = `${base}-${count}`;
+  const { error } = await supabase.from("product_lists").insert({ linktree_id: linktree.id, user_id: user.id, title, slug });
+  if (error) redirect(`/dashboard/shops/lists?error=${encodeURIComponent(friendlyError(error))}`);
+  revalidatePath("/dashboard/shops/lists");
+  redirect("/dashboard/shops/lists?message=List created. Pick its products below.");
+}
+
+export async function updateProductList(formData: FormData) {
+  const { supabase, linktree } = await authenticatedClient();
+  const id = String(formData.get("id") ?? "");
+  const title = String(formData.get("title") ?? "").trim().slice(0, 60);
+  if (!isUuid(id) || !title) redirect("/dashboard/shops/lists?error=List name is required");
+  const wanted = [...new Set(formData.getAll("product_ids").map(String).filter(isUuid))];
+  // Hanya produk milik halaman ini; urutan mengikuti urutan produk di dashboard.
+  const { data: owned } = wanted.length ? await supabase.from("products").select("id").eq("linktree_id", linktree.id).in("id", wanted) : { data: [] };
+  const ids = new Set((owned ?? []).map((item) => item.id as string));
+  const productIds = wanted.filter((value) => ids.has(value)).slice(0, 60);
+  const { data: list, error } = await supabase.from("product_lists").update({ title, product_ids: productIds }).eq("id", id).eq("linktree_id", linktree.id).select("slug").maybeSingle();
+  if (error || !list) redirect(`/dashboard/shops/lists?error=${encodeURIComponent(error ? friendlyError(error) : "List not found")}`);
+  revalidatePath("/dashboard/shops/lists");
+  if (linktree.slug) revalidatePath(`/${linktree.slug}/c/${list.slug}`);
+  redirect(`/dashboard/shops/lists?message=${encodeURIComponent(`Saved "${title}" with ${productIds.length} ${productIds.length === 1 ? "product" : "products"}${wanted.length > 60 ? " (the limit is 60)" : ""}`)}`);
+}
+
+export async function deleteProductList(formData: FormData) {
+  const { supabase, linktree } = await authenticatedClient();
+  const id = String(formData.get("id") ?? "");
+  if (!isUuid(id)) redirect("/dashboard/shops/lists?error=List not found");
+  const { error } = await supabase.from("product_lists").delete().eq("id", id).eq("linktree_id", linktree.id);
+  if (error) redirect(`/dashboard/shops/lists?error=${encodeURIComponent(friendlyError(error))}`);
+  revalidatePath("/dashboard/shops/lists");
+  redirect("/dashboard/shops/lists?message=List deleted");
+}
+
 export async function reorderShopCollections(ids: string[]) {
   const { supabase, linktree } = await authenticatedClient();
   await Promise.all(ids.map((id, position) => supabase.from("shop_collections").update({ position }).eq("id", id).eq("linktree_id", linktree.id)));
@@ -485,7 +545,7 @@ export async function saveCustomDesign(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim().slice(0, 60);
   if (!title) redirect("/dashboard/design?error=Title is required");
   const [{ error }, { error: headerError }] = await Promise.all([
-    supabase.from("linktrees").update({ ...changes, name: title }).eq("id", linktree.id).eq("owner_id", user.id),
+    supabase.from("linktrees").update({ ...changes, name: title, affiliate_notice: formData.get("affiliate_notice") === "on" }).eq("id", linktree.id).eq("owner_id", user.id),
     supabase.from("linktree_headers").upsert({ linktree_id: linktree.id, title, bio: String(formData.get("bio") ?? "").trim().slice(0, 160) }),
   ]);
   if (error || headerError) redirect(`/dashboard/design?error=${encodeURIComponent(friendlyError((error || headerError)!))}`);
@@ -533,6 +593,15 @@ function accountError(message: string): never {
 
 async function requireSensitiveAuth(supabase: Awaited<ReturnType<typeof createClient>>) {
   if (await needsMfaCode(supabase)) redirect("/login/mfa?next=/dashboard/account");
+}
+
+// Ringkasan mingguan lewat email (opt-in). Dikirim cron /api/cron/weekly-summary tiap Senin pagi.
+export async function saveWeeklyEmail(formData: FormData) {
+  const { supabase, user } = await authenticatedClient();
+  const { error } = await supabase.from("profiles").update({ weekly_email: formData.get("weekly_email") === "on" }).eq("id", user.id);
+  if (error) redirect(`/dashboard/account?error=${encodeURIComponent(friendlyError(error))}`);
+  revalidatePath("/dashboard/account");
+  redirect(`/dashboard/account?message=${formData.get("weekly_email") === "on" ? "Weekly email turned on" : "Weekly email turned off"}`);
 }
 
 export async function changePassword(formData: FormData) {

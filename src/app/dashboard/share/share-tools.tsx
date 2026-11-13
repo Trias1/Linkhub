@@ -32,3 +32,20 @@ export function ShareTools({ url, name }: { url: string; name: string }) {
     </div>
   </div>;
 }
+
+// Link bio per aplikasi (?src=tiktok): Insights bisa memisahkan pengunjung dari TikTok, Instagram, dan lainnya.
+const bioApps = [["tiktok", "TikTok"], ["instagram", "Instagram"], ["whatsapp", "WhatsApp"], ["facebook", "Facebook"], ["youtube", "YouTube"], ["x", "X"], ["threads", "Threads"]] as const;
+
+export function BioLinks({ url }: { url: string }) {
+  const [copied, setCopied] = useState("");
+  async function copy(key: string, value: string) {
+    await navigator.clipboard.writeText(value).catch(() => undefined);
+    setCopied(key);
+    window.setTimeout(() => setCopied(""), 1800);
+  }
+  return <ul className="lh-bio-links">{bioApps.map(([key, label]) => { const value = `${url}?src=${key}`; return <li key={key}>
+    <b>{label}</b>
+    <input readOnly value={value} aria-label={`Link for your ${label} bio`} onFocus={(event) => event.target.select()} />
+    <button type="button" className="lh-btn small secondary" onClick={() => void copy(key, value)}>{copied === key ? "Copied" : "Copy"}</button>
+  </li>; })}</ul>;
+}

@@ -1,6 +1,7 @@
 import "server-only";
 import { commercePlatforms } from "@/lib/commerce-platforms";
 import { priceDigits } from "@/lib/rupiah";
+import { shopeeProduct } from "@/lib/shopee-affiliate";
 
 // Ambil nama, harga, harga coret dan foto dari halaman produk marketplace, untuk mengisi form otomatis.
 // Hanya domain marketplace yang dikenal (bukan alamat bebas) supaya server tidak bisa dipakai untuk SSRF.
@@ -123,6 +124,9 @@ function tokopediaShopPage(url: URL) {
 export async function readProductDetails(link: string): Promise<ProductDetails | LookupFailure> {
   const url = httpsUrl(link);
   if (!url) return "unsupported";
+  // Shopee memblokir pembacaan halaman; kalau kredensial Shopee Affiliate ada, pakai API resminya.
+  const viaShopee = await shopeeProduct(url).catch(() => null);
+  if (viaShopee) return viaShopee;
   const shopPage = tokopediaShopPage(url);
   let failure: LookupFailure | null = null;
   for (const candidate of shopPage ? [shopPage, url] : [url]) {

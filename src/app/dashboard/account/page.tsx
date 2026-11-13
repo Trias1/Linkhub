@@ -1,15 +1,16 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { getDashboardContext } from "@/lib/active-linktree";
 import { AccountSecurity } from "./account-security";
-import { saveAccount, switchLinktree } from "../actions";
+import { saveAccount, saveWeeklyEmail, switchLinktree } from "../actions";
 
 export const metadata = { title: "Account · LinkHub" };
 
 export default async function AccountPage({ searchParams }: { searchParams: Promise<{ error?: string; message?: string }> }) {
   const { supabase, user, linktree, linktrees } = await getDashboardContext();
-  const [{ data: profile }, { data: mfaFactors }, query] = await Promise.all([
+  const [{ data: profile }, { data: mfaFactors }, { data: owner }, query] = await Promise.all([
     supabase.from("linktrees").select("name,slug,avatar_url").eq("id", linktree.id).single(),
     supabase.auth.mfa.listFactors(),
+    supabase.from("profiles").select("weekly_email").eq("id", user.id).maybeSingle(),
     searchParams,
   ]);
 
@@ -30,6 +31,14 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
     <section className="lh-box"><h2>Your pages <span className="lh-hint">· {linktrees.length} of 3</span></h2>
       <ul className="lh-devices">{linktrees.map((item) => <li key={item.id}><span><b>{item.name}</b><small>{item.slug ? `/${item.slug}` : "No address yet"}</small></span>{item.id === linktree.id ? <span className="lh-status live">Open now</span> : <form action={switchLinktree}><input type="hidden" name="linktree_id" value={item.id} /><button className="lh-btn secondary small">Open</button></form>}</li>)}</ul>
       {linktrees.length < 3 ? <Link className="lh-btn secondary small lh-mt" href="/dashboard/new">+ New page</Link> : null}
+    </section>
+
+    <section className="lh-box"><h2>Weekly email</h2>
+      <form action={saveWeeklyEmail} className="lh-weekly">
+        <label className="lh-check"><input type="checkbox" name="weekly_email" defaultChecked={Boolean(owner?.weekly_email)} /> Send me a summary every Monday <small>Visitors, buy clicks and your top products from the last 7 days, for each of your pages. Sent to {user.email}.</small></label>
+        {!process.env.RESEND_API_KEY ? <p className="lh-hint">Emails start once the email service is set up for LinkHub. Your choice is saved now.</p> : null}
+        <div><button className="lh-btn secondary small">Save</button></div>
+      </form>
     </section>
 
     <AccountSecurity slug={profile?.slug ?? ""} canDeleteLinktree={linktrees.length > 1} initialFactors={(mfaFactors?.all ?? []) as { id: string; factor_type: string; friendly_name?: string; status: string }[]} />

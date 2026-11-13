@@ -12,7 +12,7 @@ export type Design = {
   title: string; bio: string; avatar_url: string | null;
   title_style: string; title_color: string; wallpaper_style: string; background_color: string;
   button_style: string; button_roundness: string; button_color: string; button_text_color: string;
-  page_font: string; text_color: string; custom_footer: string;
+  page_font: string; text_color: string; custom_footer: string; affiliate_notice: boolean;
 };
 
 const fonts = [["geist", "Geist"], ["inter", "Inter"], ["poppins", "Poppins"], ["dm-sans", "DM Sans"], ["nunito", "Nunito"], ["montserrat", "Montserrat"], ["space", "Space Grotesk"], ["playfair", "Playfair Display"], ["lora", "Lora"], ["merriweather", "Merriweather"], ["bebas-neue", "Bebas Neue"], ["caveat", "Caveat"]];
@@ -70,6 +70,7 @@ export function DesignEditor({ initial, error, message }: { initial: Design; err
       <section className="lh-box lh-design-fields"><h2>Font and footer</h2>
         <label className="lh-field">Font<select name="page_font" value={design.page_font} onChange={(event) => set("page_font")(event.target.value)}>{fonts.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <label className="lh-field">Footer note<small>Optional, shown at the bottom of your page</small><input name="custom_footer" maxLength={120} value={design.custom_footer} onChange={(event) => set("custom_footer")(event.target.value)} placeholder="e.g. Thanks for stopping by" /></label>
+        <label className="lh-check"><input type="checkbox" name="affiliate_notice" checked={design.affiliate_notice} onChange={(event) => { const checked = event.target.checked; setDesign((current) => ({ ...current, affiliate_notice: checked })); }} /> Say that some links are affiliate links <small>Adds a short note at the bottom of your page, product pages and video lists.</small></label>
       </section>
 
       <div className="lh-savebar"><span className="lh-hint">{changed ? "You have unsaved changes." : "All changes saved."}</span>{changed ? <button type="button" className="lh-btn secondary small" onClick={() => setDesign(initial)}>Reset</button> : null}<button className="lh-btn small" disabled={!changed}>Save design</button></div>
@@ -82,6 +83,7 @@ export function DesignEditor({ initial, error, message }: { initial: Design; err
         <div className="lh-section-title"><h2>Products</h2></div>
         <div className="lh-grid">{["Product name", "Another product"].map((name) => <div className="lh-card" key={name}><span className="lh-thumb" /><h3>{name}</h3><div className="lh-meta"><span className="lh-price">Rp99.000</span></div><span className="lh-buy" style={{ background: buyColor("shopee") }}>Buy on Shopee</span></div>)}</div>
         <div className="lh-links"><div className="lh-link-group"><h2>Contact</h2>{[["whatsapp", "Order on WhatsApp"], ["instagram", "Instagram"]].map(([platform, label]) => <span className={`lh-link button-${design.button_style} radius-${design.button_roundness}`} key={platform}><PlatformIcon platform={platform} /><span>{label}</span></span>)}</div></div>
+        {design.affiliate_notice ? <p className="lh-note">Some links on this page are affiliate links. I may earn a small commission when you buy, at no extra cost to you.</p> : null}
         {design.custom_footer ? <p className="lh-note">{design.custom_footer}</p> : null}
       </div></div></div>
       <p className="lh-hint lh-center">Preview with sample products. Your real page updates after you save.</p>

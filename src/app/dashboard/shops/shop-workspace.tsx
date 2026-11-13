@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
+import Link from "next/link";
 import { PlatformIcon } from "@/components/platform-icon";
 import { formatRupiah } from "@/lib/rupiah";
 import { commercePlatforms, detectPlatform, platformColor, platformLabel } from "@/lib/commerce-platforms";
@@ -10,7 +11,7 @@ import { dateInputValue, formatEndDate, formatStartDate, productStatus, type Pro
 import type { ProductDetails } from "@/lib/product-details";
 import { MAX_UPLOAD, shrinkImage } from "@/lib/shrink-image";
 import { RupiahInput } from "./rupiah-input";
-import { addProduct, addProductsBulk, importProductsCsv, addShopCollection, deleteProduct, fetchProductDetails, deleteShopCollection, moveProduct, moveShopCollection, setProductActive, updateProduct, updateShopCollection } from "../actions";
+import { shopeeAffiliateLink, addProduct, addProductsBulk, importProductsCsv, addShopCollection, deleteProduct, fetchProductDetails, deleteShopCollection, moveProduct, moveShopCollection, setProductActive, updateProduct, updateShopCollection } from "../actions";
 import { cssUrl } from "@/lib/css-url";
 import { QrCode } from "@/components/qr-code";
 
@@ -19,7 +20,7 @@ const statusLabel: Record<ProductStatus, string> = { live: "Live", scheduled: "S
 
 function Chevron({ up }: { up?: boolean }) { return <svg viewBox="0 0 24 24" aria-hidden="true"><path d={up ? "m6 15 6-6 6 6" : "m6 9 6 6 6-6"} /></svg>; }
 
-function ProductForm({ categories, product, onCancel, sharedLink = "" }: { categories: Category[]; product?: Product; onCancel?: () => void; sharedLink?: string }) {
+function ProductForm({ categories, product, onCancel, sharedLink = "", affiliateReady = false }: { categories: Category[]; product?: Product; onCancel?: () => void; sharedLink?: string; affiliateReady?: boolean }) {
   const [url, setUrl] = useState(product?.url ?? sharedLink);
   const detected = url ? detectPlatform(url) : null;
   const [open, setOpen] = useState(Boolean(product || sharedLink));
@@ -66,6 +67,13 @@ function ProductForm({ categories, product, onCancel, sharedLink = "" }: { categ
     // eslint-disable-next-line react-hooks/exhaustive-deps -- hanya sekali untuk link yang dibagikan
   }, [sharedLink]);
   const canFill = /^https:\/\/\S+$/.test(url) && detected !== "website";
+  const [affiliate, setAffiliate] = useState<{ busy: boolean; text: string }>({ busy: false, text: "" });
+  async function applyAffiliateLink() {
+    setAffiliate({ busy: true, text: "" });
+    const result = await shopeeAffiliateLink(url).catch(() => ({ link: null, error: "Could not reach Shopee. Try again." }));
+    if (result.link) { lastLookup.current = result.link; setUrl(result.link); }
+    setAffiliate({ busy: false, text: result.link ? "Link changed to your Shopee affiliate link." : result.error ?? "" });
+  }
   return <form action={product ? updateProduct : addProduct} className="lh-product-form">
     {product ? <input type="hidden" name="id" value={product.id} /> : null}
     <div className="lh-paste">
@@ -73,10 +81,12 @@ function ProductForm({ categories, product, onCancel, sharedLink = "" }: { categ
       {!open ? <button type="button" className="lh-btn" onClick={() => setOpen(true)}>Continue</button> : null}
     </div>
     <p className="lh-detect" aria-live="polite">{detected ? detected === "website" ? "Other store. The button will say “View product”." : <><i style={{ background: platformColor(detected) }} /><b>{platformLabel(detected)}</b> detected. The button will say &ldquo;Buy on {platformLabel(detected)}&rdquo;.</> : "Supports Shopee, Tokopedia, TikTok Shop, Lazada, Facebook and more."}</p>
+    {affiliateReady && detected === "shopee" && /^https:\/\/\S+$/.test(url) ? <p className="lh-fill" aria-live="polite"><span>{affiliate.text}</span><button type="button" className="lh-linkbtn" disabled={affiliate.busy} onClick={() => void applyAffiliateLink()}>{affiliate.busy ? "Getting link…" : "Use my affiliate link"}</button></p> : null}
     {canFill ? <p className="lh-fill" aria-live="polite"><span>{lookup.text}</span><button type="button" className="lh-linkbtn" disabled={lookup.busy} onClick={() => void fillFromLink(url)}>{lookup.busy ? "Reading…" : "Fill in from link"}</button></p> : null}
     {open ? <div className="lh-form-grid">
       <label className="lh-photo">{preview ? <span style={{ backgroundImage: cssUrl(preview) }} /> : <span>Photo<br />JPG, PNG, WebP<br />resized for you</span>}<input name="image" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Product photo" onChange={(event) => void pickPhoto(event.currentTarget)} />{filled?.image && !photo.url ? <input type="hidden" name="image_source" value={filled.image} /> : null}{photo.note ? <small className="lh-photo-note" role="status">{photo.note}</small> : null}</label>
       <label className="lh-field lh-wide">Product name<input key={`title-${fillKey}`} name="title" required maxLength={100} defaultValue={filled?.title || product?.title} placeholder="e.g. 2-tier rotating spice rack" /></label>
+      <label className="lh-field lh-wide">Your note <small>Optional. One line on why you like it, shown on the product card.</small><input name="note" maxLength={140} defaultValue={product?.note} placeholder="e.g. I use this every day and the lid really seals" /></label>
       <RupiahInput key={`price-${fillKey}`} defaultValue={filled?.price || product?.price} />
       <RupiahInput key={`compare-${fillKey}`} name="compare_price" label="Original price" hint="Optional, shown crossed out" defaultValue={filled ? filled.comparePrice : product?.compare_price} />
       <label className="lh-field">Category<select name="collection_id" defaultValue={product?.collection_id ?? categories[0]?.id}>{categories.map((category) => <option value={category.id} key={category.id}>{category.title}</option>)}</select></label>
@@ -127,7 +137,7 @@ function BulkAdd({ categories }: { categories: Category[] }) {
   </details>;
 }
 
-function ProductRow({ product, categories, clicks, first, last, shareUrl }: { product: Product; categories: Category[]; clicks: number | null; first: boolean; last: boolean; shareUrl: string | null }) {
+function ProductRow({ product, categories, clicks, first, last, shareUrl, affiliateReady }: { product: Product; categories: Category[]; clicks: number | null; first: boolean; last: boolean; shareUrl: string | null; affiliateReady: boolean }) {
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
   const status = productStatus(product);
@@ -144,12 +154,12 @@ function ProductRow({ product, categories, clicks, first, last, shareUrl }: { pr
       <span className="lh-clicks">{clicks === null ? "–" : <><b>{clicks}</b>clicks</>}</span>
       <button type="button" className="lh-switch" role="switch" aria-checked={product.is_active} aria-label={`Show ${product.title} on my page`} disabled={pending} onClick={() => startTransition(() => setProductActive(product.id, !product.is_active))} />
     </div>
-    {editing ? <ProductForm categories={categories} product={product} onCancel={() => setEditing(false)} /> : null}
+    {editing ? <ProductForm categories={categories} product={product} onCancel={() => setEditing(false)} affiliateReady={affiliateReady} /> : null}
     {editing && shareUrl && product.number && status === "live" ? <ProductShare product={product} pageUrl={shareUrl} /> : null}
   </li>;
 }
 
-export function ProductsWorkspace({ slug, origin = "", sharedLink = "", error, message, collections, products, clicksByProduct, clicksByPlatform, statsReady }: { slug: string | null; origin?: string; sharedLink?: string; error?: string; message?: string; collections: Category[]; products: Product[]; clicksByProduct: Record<string, number>; clicksByPlatform: Record<string, number>; statsReady: boolean }) {
+export function ProductsWorkspace({ slug, origin = "", affiliateReady = false, sharedLink = "", error, message, collections, products, clicksByProduct, clicksByPlatform, statsReady }: { slug: string | null; origin?: string; affiliateReady?: boolean; sharedLink?: string; error?: string; message?: string; collections: Category[]; products: Product[]; clicksByProduct: Record<string, number>; clicksByPlatform: Record<string, number>; statsReady: boolean }) {
   const [filter, setFilter] = useState<"all" | ProductStatus>("all");
   const [movingCategory, startCategoryMove] = useTransition();
   // Pratinjau dimuat ulang setiap isi produk/kategori berubah (bukan hanya jumlahnya).
@@ -168,6 +178,7 @@ export function ProductsWorkspace({ slug, origin = "", sharedLink = "", error, m
         <div><h1>Products</h1><p>{products.length} products · {count("live")} live{count("scheduled") ? ` · ${count("scheduled")} scheduled` : ""}</p></div>
         {pageUrl ? <a className="lh-btn secondary small" href={pageUrl} target="_blank" rel="noopener noreferrer">View page</a> : null}
       </header>
+      <nav className="lh-subnav" aria-label="Products"><Link href="/en/dashboard/shops" aria-current="page">All products</Link><Link href="/en/dashboard/shops/lists">Video lists</Link></nav>
       {error ? <p className="lh-alert" role="alert">{error}</p> : null}
       {message ? <p className="lh-ok" role="status">{message}</p> : null}
 
@@ -179,7 +190,7 @@ export function ProductsWorkspace({ slug, origin = "", sharedLink = "", error, m
 
       <section className="lh-box">
         <h2>Add a product</h2>
-        {collections.length ? <><ProductForm categories={collections} sharedLink={sharedLink} /><BulkAdd categories={collections} /></> : <div className="lh-empty-box"><p>Create a category first, for example &ldquo;Kitchen&rdquo; or &ldquo;Fashion&rdquo;. Shoppers can filter by category on your page.</p><form action={addShopCollection}><button className="lh-btn small">Create first category</button></form></div>}
+        {collections.length ? <><ProductForm categories={collections} sharedLink={sharedLink} affiliateReady={affiliateReady} /><BulkAdd categories={collections} /></> : <div className="lh-empty-box"><p>Create a category first, for example &ldquo;Kitchen&rdquo; or &ldquo;Fashion&rdquo;. Shoppers can filter by category on your page.</p><form action={addShopCollection}><button className="lh-btn small">Create first category</button></form></div>}
       </section>
 
       <section className="lh-box">
@@ -194,7 +205,7 @@ export function ProductsWorkspace({ slug, origin = "", sharedLink = "", error, m
         </div>
         {collections.map((category) => { const items = sorted.filter((item) => item.collection_id === category.id); const shown = items.filter((item) => filter === "all" || productStatus(item) === filter); return filter !== "all" && !shown.length ? null : <div className="lh-group" key={category.id}>
           <h3>{category.title} <span>{items.length}</span></h3>
-          {shown.length ? <ul className="lh-items">{shown.map((item) => <ProductRow key={JSON.stringify(item)} product={item} categories={collections} clicks={statsReady ? clicksByProduct[item.id] ?? 0 : null} first={filter !== "all" || items[0].id === item.id} last={filter !== "all" || items[items.length - 1].id === item.id} shareUrl={slug && origin ? `${origin}/${slug}` : null} />)}</ul> : <p className="lh-hint">No products in this category yet.</p>}
+          {shown.length ? <ul className="lh-items">{shown.map((item) => <ProductRow key={JSON.stringify(item)} product={item} categories={collections} clicks={statsReady ? clicksByProduct[item.id] ?? 0 : null} first={filter !== "all" || items[0].id === item.id} last={filter !== "all" || items[items.length - 1].id === item.id} shareUrl={slug && origin ? `${origin}/${slug}` : null} affiliateReady={affiliateReady} />)}</ul> : <p className="lh-hint">No products in this category yet.</p>}
         </div>; })}
         {!products.length && collections.length ? <p className="lh-hint">Paste your first product link above.</p> : null}
       </section>

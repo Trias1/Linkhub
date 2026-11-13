@@ -13,9 +13,9 @@ import { cssUrl } from "@/lib/css-url";
 type LinkCollection = { id: string; title: string };
 type LinkItem = { id: string; collection_id: string | null; title: string; platform: string | null; domain?: string | null };
 type ShopCollection = { id: string; title: string };
-export type PublicProduct = { id: string; collection_id: string; platform: string; title: string; price: string; image_url: string | null; compare_price: string; is_featured: boolean; ends_at: string | null; number?: number | null; badge?: string | null; ends?: string | null };
+export type PublicProduct = { id: string; collection_id: string; platform: string; title: string; price: string; image_url: string | null; compare_price: string; is_featured: boolean; ends_at: string | null; number?: number | null; badge?: string | null; ends?: string | null; note?: string };
 type Product = PublicProduct;
-type Profile = { id:string; name: string; bio: string; avatar_url: string | null; title_style: string; button_style: string; button_roundness: string; custom_footer: string };
+type Profile = { id:string; name: string; bio: string; avatar_url: string | null; title_style: string; button_style: string; button_roundness: string; custom_footer: string; affiliate_notice?: boolean };
 
 const buyLabel = (platform: string, en: boolean) => isCommercePlatform(platform) ? `${en ? "Buy on" : "Beli di"} ${platformLabel(platform)}` : en ? "View product" : "Lihat produk";
 export const discount = (item: Product) => { const price = Number(item.price); const before = Number(item.compare_price); return price && before > price ? Math.round((1 - price / before) * 100) : 0; };
@@ -35,17 +35,27 @@ export function Thumb({ item }: { item: Product }) {
   return item.image_url ? <span className="lh-thumb" role="img" aria-label={item.title} style={{ backgroundImage: cssUrl(item.image_url) }} /> : <span className="lh-thumb lh-thumb-empty"><PlatformIcon platform={item.platform} size={28} /></span>;
 }
 
+// ?src=tiktok di link bio dan referrer dipakai server untuk menentukan sumber kunjungan (hanya kategorinya disimpan).
+function recordView(id: string) {
+  const src = new URLSearchParams(window.location.search).get("src");
+  void fetch(`/api/view/${id}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ src, ref: document.referrer }) });
+}
+
 // Kunjungan halaman (sekali per hari per pengunjung, lihat /api/view). Pratinjau dashboard tidak dihitung.
 export function TrackView({ id, track = true }: { id: string; track?: boolean }) {
-  useEffect(() => { if (track) void fetch(`/api/view/${id}`, { method: "POST" }); }, [id, track]);
+  useEffect(() => { if (track) recordView(id); }, [id, track]);
   return null;
 }
+
+// Catatan affiliate (pilihan di Design), juga dipakai di halaman produk dan daftar video.
+export function AffiliateNote() { return <p className="lh-note">Some links on this page are affiliate links. I may earn a small commission when you buy, at no extra cost to you.</p>; }
 
 // Kartu produk: dipakai di halaman utama, halaman per produk (/slug/p/12) dan daftar per video (/slug/c/...).
 export function ProductCard({ item, en }: { item: Product; en: boolean }) {
   return <article className="lh-card" id={item.number ? `no-${item.number}` : undefined}>
     <span className="lh-thumb-wrap"><Thumb item={item} />{item.number ? <span className="lh-no" aria-label={en ? `Number ${item.number}` : `Nomor ${item.number}`}>{item.number}</span> : null}{item.badge ? <span className="lh-tag">{item.badge}</span> : null}</span>
     <h3>{item.title}</h3>
+    {item.note ? <p className="lh-pnote">{item.note}</p> : null}
     <div className="lh-meta"><Price item={item} />{discount(item) ? <span className="lh-off">-{discount(item)}%</span> : null}</div>
     {item.ends ? <p className="lh-ends">{item.ends}</p> : null}
     <BuyButton item={item} en={en} />
@@ -57,7 +67,7 @@ export function PublicProfileContent({ profile, linkCollections, links, shopColl
   const [category, setCategory] = useState("all");
   const [term, setTerm] = useState(initialSearch);
   // Pratinjau di dashboard (?preview=1) tidak dihitung sebagai kunjungan.
-  useEffect(() => { if (track) void fetch(`/api/view/${profile.id}`, { method: "POST" }); }, [profile.id, track]);
+  useEffect(() => { if (track) recordView(profile.id); }, [profile.id, track]);
 
   const stores = links.filter((item) => isCommercePlatform(item.platform));
   const otherLinks = links.filter((item) => !isCommercePlatform(item.platform));
@@ -82,6 +92,7 @@ export function PublicProfileContent({ profile, linkCollections, links, shopColl
       <div>
         {discount(item) ? <span className="lh-flag">-{discount(item)}%</span> : <span className="lh-flag">{en ? "Pick" : "Pilihan"}</span>}{item.badge ? <span className="lh-flag lh-flag-plain">{item.badge}</span> : null}
         <h3>{item.title}</h3>
+        {item.note ? <p className="lh-pnote">{item.note}</p> : null}
         <Price item={item} />
         {item.ends ? <p className="lh-until lh-ends">{item.ends}</p> : item.ends_at ? <p className="lh-until">{en ? "Until" : "Promo sampai"} {formatEndDate(item.ends_at, locale)}</p> : null}
         <BuyButton item={item} en={en} />
@@ -102,6 +113,7 @@ export function PublicProfileContent({ profile, linkCollections, links, shopColl
 
     {!links.length && !products.length ? <p className="lh-empty">{en ? "Nothing here yet." : "Belum ada isi di halaman ini."}</p> : null}
     {products.length ? <p className="lh-note">{en ? "Prices and stock follow the destination store." : "Harga dan stok mengikuti toko tujuan."}</p> : null}
+    {profile.affiliate_notice ? <AffiliateNote /> : null}
     {profile.custom_footer ? <p className="lh-note">{profile.custom_footer}</p> : null}
     <Link className="lh-made" href="/">LinkHub by Trias</Link>
   </div>;
