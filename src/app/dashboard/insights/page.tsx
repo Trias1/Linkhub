@@ -16,8 +16,10 @@ export default async function InsightsPage({ searchParams }: { searchParams: Pro
     supabase.from("links").select("id,title,platform").eq("linktree_id", linktree.id),
     supabase.from("products").select("id,title,platform").eq("linktree_id", linktree.id),
   ]);
-  type Summary = { days: { day: string; views: number; clicks: number; buys: number }[]; links: { id: string; count: number }[]; products: { id: string; count: number }[]; stores: { platform: string; count: number }[] };
+  type Summary = { days: { day: string; views: number; clicks: number; buys: number }[]; links: { id: string; count: number }[]; products: { id: string; count: number }[]; stores: { platform: string; count: number }[]; sources?: { source: string; views: number; taps: number }[]; hours?: { hour: number; views: number; taps: number }[] };
   const data: Summary = { days: [], links: [], products: [], stores: [], ...(summary as Partial<Summary> | null) };
+  // Per jam (WIB): 24 baris, jam tanpa aktivitas = 0. Kosong kalau SQL 022 belum dijalankan.
+  const hours = data.hours ? Array.from({ length: 24 }, (_, hour) => ({ hour, views: 0, taps: 0, ...data.hours!.find((row) => row.hour === hour) })) : null;
   const days = insightDays(period.from, period.to).map((day) => ({ ...day, buys: 0 }));
   const dayMap = new Map(days.map((day) => [day.key, day]));
   data.days.forEach((row) => { const day = dayMap.get(row.day); if (day) { day.views = row.views; day.clicks = row.clicks; day.buys = row.buys; } });
@@ -34,5 +36,7 @@ export default async function InsightsPage({ searchParams }: { searchParams: Pro
     topLinks={rank(links, data.links, "Deleted link")}
     topProducts={rank(products, data.products, "Deleted product")}
     stores={data.stores.map((row) => [row.platform, row.count] as [string, number])}
+    sources={data.sources ?? null}
+    hours={hours}
   />;
 }

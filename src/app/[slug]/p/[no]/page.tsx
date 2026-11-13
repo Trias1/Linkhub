@@ -7,7 +7,7 @@ import { liveProductByNumber, loadPublicPage, publicProduct } from "@/lib/public
 import { formatRupiah } from "@/lib/rupiah";
 import { isCommercePlatform, platformLabel } from "@/lib/commerce-platforms";
 import { cssUrl } from "@/lib/css-url";
-import { BuyButton, Price, Thumb, TrackView, discount } from "../../public-profile-content";
+import { AffiliateNote, BuyButton, Price, Thumb, TrackView, discount } from "../../public-profile-content";
 
 type Params = { params: Promise<{ slug: string; no: string }> };
 
@@ -44,6 +44,7 @@ export default async function ProductPage({ params, searchParams }: Params & { s
         <span className="lh-thumb-wrap"><Thumb item={product} />{product.number ? <span className="lh-no">{product.number}</span> : null}</span>
         <div>
           <h1>{product.title}</h1>
+          {product.note ? <p className="lh-pnote">{product.note}</p> : null}
           <div className="lh-meta"><Price item={product} />{discount(product) ? <span className="lh-off">-{discount(product)}%</span> : null}</div>
           {product.ends ? <p className="lh-ends">{product.ends}</p> : null}
           <BuyButton item={product} en />
@@ -51,6 +52,7 @@ export default async function ProductPage({ params, searchParams }: Params & { s
       </article> : <p className="lh-empty">This product is not available any more.</p>}
       <Link className="lh-link button-outline radius-pill lh-solo-more" href={home}><span>See all products from {name}</span></Link>
       {product ? <p className="lh-note">Prices and stock follow the destination store.</p> : null}
+      {product && profile.affiliate_notice ? <AffiliateNote /> : null}
       <Link className="lh-made" href="/">LinkHub by Trias</Link>
     </div>
   </main>;

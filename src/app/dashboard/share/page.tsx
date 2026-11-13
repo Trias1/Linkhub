@@ -3,7 +3,7 @@ import { getDashboardContext } from "@/lib/active-linktree";
 import { siteOrigin } from "@/lib/site-url";
 import { QrCode } from "@/components/qr-code";
 import { ShareSettingsForm } from "./share-settings-form";
-import { ShareTools } from "./share-tools";
+import { BioLinks, ShareTools } from "./share-tools";
 
 export const metadata = { title: "Share & QR · LinkHub" };
 
@@ -25,6 +25,7 @@ export default async function SharePage({ searchParams }: { searchParams: Promis
       <section className="lh-box"><h2>Your link</h2><ShareTools url={url} name={name} /></section>
       <section className="lh-box lh-qr-box"><h2>QR code</h2><QrCode value={url} filename={`linkhub-${profile?.slug}-qr`} /><p className="lh-hint">For stickers, packaging, flyers or your shop counter. Scanning opens your page.</p></section>
     </div> : <section className="lh-box lh-empty-box"><p>Your page needs an address before you can share it.</p><Link className="lh-btn small" href="/dashboard/account">Set page address</Link></section>}
+    {url ? <section className="lh-box"><h2>Links for your bios</h2><p className="lh-hint">Same page, one link per app. Put each one in that app&rsquo;s bio, and <Link href="/dashboard/insights">Insights</Link> shows how many visitors and taps came from each app.</p><BioLinks url={url} /></section> : null}
     <section className="lh-box"><h2>Link preview</h2><ShareSettingsForm name={name} url={url} initial={{ title: profile?.seo_title || "", description: profile?.seo_description || "", color: profile?.share_image_color || "#171712" }} /></section>
   </div>;
 }
