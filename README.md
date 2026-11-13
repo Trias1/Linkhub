@@ -11,7 +11,10 @@ LinkHub is a free, open-source shop page for people who sell or promote products
 - A "Buy on Shopee / Tokopedia / TikTok Shop" button per product, detected from the link.
 - Promos with start and end dates: products show in "On sale" and hide themselves when the promo ends.
 - Product numbers that never change, so viewers can find "number 12" by typing it on the page or opening `/your-page?no=12`.
-- Auto-fill of name, price and photo from a product link where the store allows it (for example Tokopedia share links).
+- Auto-fill of name, price and photo from a product link where the store allows it (for example Tokopedia share links), and for Shopee through the Shopee Affiliate Open API when its keys are set.
+- Add up to 10 product links at once as drafts, and export or import products as CSV.
+- "New" and "Popular" labels, a countdown on promos that end soon, and a short personal note per product.
+- A page per product (`/your-page/p/12`) with its own share image, and video lists (`/your-page/c/haul-1212`) with one link per video or post.
 - Photos are resized in the browser before upload.
 
 **Links**
@@ -21,11 +24,14 @@ LinkHub is a free, open-source shop page for people who sell or promote products
 **Design and sharing**
 - Themes, colours, gradients, button styles, corners, fonts and footer, with a live phone preview.
 - Share tools and a QR code (PNG or SVG) for your page.
+- One bio link per app (`?src=tiktok`, `?src=instagram`, ...) so Insights can tell them apart.
+- An optional "Some links are affiliate links" note.
 - Installable web app; on Android, share a product from a marketplace app straight to LinkHub.
 
 **Insights**
 - Visitors, link clicks and buy clicks per day (WIB), top products, top links and clicks per store.
-- CSV export.
+- Where visitors come from (TikTok, Instagram, WhatsApp and more) and the busiest hours. Only a one-word source is stored.
+- CSV export, and an optional weekly summary email.
 
 **Account and security**
 - Up to three pages per account.
@@ -67,10 +73,17 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=
 TURNSTILE_SECRET_KEY=
+SHOPEE_AFFILIATE_APP_ID=
+SHOPEE_AFFILIATE_SECRET=
+CRON_SECRET=
+RESEND_API_KEY=
+EMAIL_FROM=
 ```
 
 - `SUPABASE_SERVICE_ROLE_KEY` is used on the server for rate limits, click and view tracking, and account deletion. Never expose it to browser code or commit it to Git.
 - The Turnstile keys are optional. Leave them empty to turn the captcha off locally.
+- The Shopee Affiliate keys are optional. They turn on Shopee auto-fill and, for the admin account, "Use my affiliate link".
+- `CRON_SECRET`, `RESEND_API_KEY` and `EMAIL_FROM` are optional. With all three set, the Vercel cron in `vercel.json` sends the weekly summary every Monday to owners who turned it on.
 
 ## Supabase Setup
 
