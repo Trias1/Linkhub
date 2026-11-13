@@ -12,7 +12,9 @@ const escape = (value: string) => value.replace(/[&<>"']/g, (char) => `&#${char.
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const apiKey = process.env.RESEND_API_KEY; const from = process.env.EMAIL_FROM;
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  // Rapikan EMAIL_FROM yang diketik di dashboard Vercel: Enter/spasi ganda jadi satu spasi, "Nama<alamat>" jadi "Nama <alamat>".
+  const from = process.env.EMAIL_FROM?.replace(/\s+/g, " ").trim().replace(/\s*</, " <").trim();
   const supabase = createAdminClient();
   if (!apiKey || !from || !supabase) return NextResponse.json({ sent: 0, skipped: "email service not configured" });
   const origin = await siteOrigin();
